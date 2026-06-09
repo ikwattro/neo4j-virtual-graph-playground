@@ -1,0 +1,22 @@
+volumes:
+  nvg_sakila_data:
+services:
+  sakila-vg:
+    image: sakiladb/postgres:latest
+    ports:
+      - 5489:5432
+    volumes:
+      - "nvg_sakila_data:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sakila -d sakila"]
+      interval: 5s
+      retries: 15
+      start_period: 30s
+      timeout: 5s
+  neo4j:
+    depends_on:
+      sakila-vg:
+        condition: service_healthy
+    volumes:
+      - "./config/postgres/jdbc/postgresql-42.7.11.jar:/var/lib/neo4j/lib/postgresql-42.7.11.jar"
+      - "./config/sakila/nvg-config:/nvg_home"

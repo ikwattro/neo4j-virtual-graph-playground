@@ -1,0 +1,343 @@
+{
+  "catalog": "sakila",
+  "schema": "public",
+  "entities": {
+    "nodes": [
+      {
+        "label": "Actor",
+        "table": "actor",
+        "properties": [
+          {"name": "first_name", "column": "FIRST_NAME", "type": "STRING"},
+          {"name": "last_name",  "column": "LAST_NAME",  "type": "STRING"}
+        ],
+        "key": [{"column": "ACTOR_ID"}]
+      },
+      {
+        "label": "Film",
+        "table": "film",
+        "properties": [
+          {"name": "title",            "column": "TITLE",            "type": "STRING"},
+          {"name": "description",      "column": "DESCRIPTION",      "type": "STRING"},
+          {"name": "release_year",     "column": "RELEASE_YEAR",     "type": "INTEGER"},
+          {"name": "rental_duration",  "column": "RENTAL_DURATION",  "type": "INTEGER"},
+          {"name": "rental_rate",      "column": "RENTAL_RATE",      "type": "FLOAT"},
+          {"name": "length",           "column": "LENGTH",           "type": "INTEGER"},
+          {"name": "replacement_cost", "column": "REPLACEMENT_COST", "type": "FLOAT"},
+          {"name": "rating",           "column": "RATING",           "type": "STRING"}
+        ],
+        "key": [{"column": "FILM_ID"}]
+      },
+      {
+        "label": "Category",
+        "table": "category",
+        "properties": [
+          {"name": "name", "column": "NAME", "type": "STRING"}
+        ],
+        "key": [{"column": "CATEGORY_ID"}]
+      },
+      {
+        "label": "Language",
+        "table": "language",
+        "properties": [
+          {"name": "name", "column": "NAME", "type": "STRING"}
+        ],
+        "key": [{"column": "LANGUAGE_ID"}]
+      },
+      {
+        "label": "Customer",
+        "table": "customer",
+        "properties": [
+          {"name": "first_name", "column": "FIRST_NAME", "type": "STRING"},
+          {"name": "last_name",  "column": "LAST_NAME",  "type": "STRING"},
+          {"name": "email",      "column": "EMAIL",      "type": "STRING"}
+        ],
+        "key": [{"column": "CUSTOMER_ID"}]
+      },
+      {
+        "label": "Store",
+        "table": "store",
+        "properties": [],
+        "key": [{"column": "STORE_ID"}]
+      },
+      {
+        "label": "Staff",
+        "table": "staff",
+        "properties": [
+          {"name": "first_name", "column": "FIRST_NAME", "type": "STRING"},
+          {"name": "last_name",  "column": "LAST_NAME",  "type": "STRING"},
+          {"name": "email",      "column": "EMAIL",      "type": "STRING"},
+          {"name": "username",   "column": "USERNAME",   "type": "STRING"}
+        ],
+        "key": [{"column": "STAFF_ID"}]
+      },
+      {
+        "label": "Inventory",
+        "table": "inventory",
+        "properties": [],
+        "key": [{"column": "INVENTORY_ID"}]
+      },
+      {
+        "label": "Rental",
+        "table": "rental",
+        "properties": [
+          {"name": "rental_date", "column": "RENTAL_DATE", "type": "LOCAL_DATE_TIME"},
+          {"name": "return_date", "column": "RETURN_DATE", "type": "LOCAL_DATE_TIME"}
+        ],
+        "key": [{"column": "RENTAL_ID"}]
+      },
+      {
+        "label": "Address",
+        "table": "address",
+        "properties": [
+          {"name": "address",     "column": "ADDRESS",     "type": "STRING"},
+          {"name": "district",    "column": "DISTRICT",    "type": "STRING"},
+          {"name": "postal_code", "column": "POSTAL_CODE", "type": "STRING"},
+          {"name": "phone",       "column": "PHONE",       "type": "STRING"}
+        ],
+        "key": [{"column": "ADDRESS_ID"}]
+      },
+      {
+        "label": "City",
+        "table": "city",
+        "properties": [
+          {"name": "name", "column": "CITY", "type": "STRING"}
+        ],
+        "key": [{"column": "CITY_ID"}]
+      },
+      {
+        "label": "Country",
+        "table": "country",
+        "properties": [
+          {"name": "name", "column": "COUNTRY", "type": "STRING"}
+        ],
+        "key": [{"column": "COUNTRY_ID"}]
+      }
+    ],
+    "relationships": [
+      {
+        "label": "ACTED_IN",
+        "table": "film_actor",
+        "start": {
+          "targetEntity": "Actor",
+          "keys": [{"nodeColumn": "ACTOR_ID", "relationshipColumn": "ACTOR_ID"}]
+        },
+        "end": {
+          "targetEntity": "Film",
+          "keys": [{"nodeColumn": "FILM_ID", "relationshipColumn": "FILM_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "ACTOR_ID"}, {"column": "FILM_ID"}]
+      },
+      {
+        "label": "IN_CATEGORY",
+        "table": "film_category",
+        "start": {
+          "targetEntity": "Film",
+          "keys": [{"nodeColumn": "FILM_ID", "relationshipColumn": "FILM_ID"}]
+        },
+        "end": {
+          "targetEntity": "Category",
+          "keys": [{"nodeColumn": "CATEGORY_ID", "relationshipColumn": "CATEGORY_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "FILM_ID"}, {"column": "CATEGORY_ID"}]
+      },
+      {
+        "label": "IN_LANGUAGE",
+        "table": "film",
+        "start": {
+          "targetEntity": "Film",
+          "keys": [{"nodeColumn": "FILM_ID", "relationshipColumn": "FILM_ID"}]
+        },
+        "end": {
+          "targetEntity": "Language",
+          "keys": [{"nodeColumn": "LANGUAGE_ID", "relationshipColumn": "LANGUAGE_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "FILM_ID"}]
+      },
+      {
+        "label": "COPY_OF",
+        "table": "inventory",
+        "start": {
+          "targetEntity": "Inventory",
+          "keys": [{"nodeColumn": "INVENTORY_ID", "relationshipColumn": "INVENTORY_ID"}]
+        },
+        "end": {
+          "targetEntity": "Film",
+          "keys": [{"nodeColumn": "FILM_ID", "relationshipColumn": "FILM_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "INVENTORY_ID"}]
+      },
+      {
+        "label": "IN_STORE",
+        "table": "inventory",
+        "start": {
+          "targetEntity": "Inventory",
+          "keys": [{"nodeColumn": "INVENTORY_ID", "relationshipColumn": "INVENTORY_ID"}]
+        },
+        "end": {
+          "targetEntity": "Store",
+          "keys": [{"nodeColumn": "STORE_ID", "relationshipColumn": "STORE_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "INVENTORY_ID"}]
+      },
+      {
+        "label": "RENTS",
+        "table": "rental",
+        "start": {
+          "targetEntity": "Rental",
+          "keys": [{"nodeColumn": "RENTAL_ID", "relationshipColumn": "RENTAL_ID"}]
+        },
+        "end": {
+          "targetEntity": "Inventory",
+          "keys": [{"nodeColumn": "INVENTORY_ID", "relationshipColumn": "INVENTORY_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "RENTAL_ID"}]
+      },
+      {
+        "label": "MADE",
+        "table": "rental",
+        "start": {
+          "targetEntity": "Customer",
+          "keys": [{"nodeColumn": "CUSTOMER_ID", "relationshipColumn": "CUSTOMER_ID"}]
+        },
+        "end": {
+          "targetEntity": "Rental",
+          "keys": [{"nodeColumn": "RENTAL_ID", "relationshipColumn": "RENTAL_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "RENTAL_ID"}]
+      },
+      {
+        "label": "PROCESSED_BY",
+        "table": "rental",
+        "start": {
+          "targetEntity": "Rental",
+          "keys": [{"nodeColumn": "RENTAL_ID", "relationshipColumn": "RENTAL_ID"}]
+        },
+        "end": {
+          "targetEntity": "Staff",
+          "keys": [{"nodeColumn": "STAFF_ID", "relationshipColumn": "STAFF_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "RENTAL_ID"}]
+      },
+      {
+        "label": "HAS_ADDRESS",
+        "table": "customer",
+        "start": {
+          "targetEntity": "Customer",
+          "keys": [{"nodeColumn": "CUSTOMER_ID", "relationshipColumn": "CUSTOMER_ID"}]
+        },
+        "end": {
+          "targetEntity": "Address",
+          "keys": [{"nodeColumn": "ADDRESS_ID", "relationshipColumn": "ADDRESS_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "CUSTOMER_ID"}]
+      },
+      {
+        "label": "HAS_ADDRESS",
+        "table": "store",
+        "start": {
+          "targetEntity": "Store",
+          "keys": [{"nodeColumn": "STORE_ID", "relationshipColumn": "STORE_ID"}]
+        },
+        "end": {
+          "targetEntity": "Address",
+          "keys": [{"nodeColumn": "ADDRESS_ID", "relationshipColumn": "ADDRESS_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "STORE_ID"}]
+      },
+      {
+        "label": "HAS_ADDRESS",
+        "table": "staff",
+        "start": {
+          "targetEntity": "Staff",
+          "keys": [{"nodeColumn": "STAFF_ID", "relationshipColumn": "STAFF_ID"}]
+        },
+        "end": {
+          "targetEntity": "Address",
+          "keys": [{"nodeColumn": "ADDRESS_ID", "relationshipColumn": "ADDRESS_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "STAFF_ID"}]
+      },
+      {
+        "label": "IN_CITY",
+        "table": "address",
+        "start": {
+          "targetEntity": "Address",
+          "keys": [{"nodeColumn": "ADDRESS_ID", "relationshipColumn": "ADDRESS_ID"}]
+        },
+        "end": {
+          "targetEntity": "City",
+          "keys": [{"nodeColumn": "CITY_ID", "relationshipColumn": "CITY_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "ADDRESS_ID"}]
+      },
+      {
+        "label": "IN_COUNTRY",
+        "table": "city",
+        "start": {
+          "targetEntity": "City",
+          "keys": [{"nodeColumn": "CITY_ID", "relationshipColumn": "CITY_ID"}]
+        },
+        "end": {
+          "targetEntity": "Country",
+          "keys": [{"nodeColumn": "COUNTRY_ID", "relationshipColumn": "COUNTRY_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "CITY_ID"}]
+      },
+      {
+        "label": "MANAGED_BY",
+        "table": "store",
+        "start": {
+          "targetEntity": "Store",
+          "keys": [{"nodeColumn": "STORE_ID", "relationshipColumn": "STORE_ID"}]
+        },
+        "end": {
+          "targetEntity": "Staff",
+          "keys": [{"nodeColumn": "STAFF_ID", "relationshipColumn": "MANAGER_STAFF_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "STORE_ID"}]
+      },
+      {
+        "label": "WORKS_AT",
+        "table": "staff",
+        "start": {
+          "targetEntity": "Staff",
+          "keys": [{"nodeColumn": "STAFF_ID", "relationshipColumn": "STAFF_ID"}]
+        },
+        "end": {
+          "targetEntity": "Store",
+          "keys": [{"nodeColumn": "STORE_ID", "relationshipColumn": "STORE_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "STAFF_ID"}]
+      },
+      {
+        "label": "SHOPS_AT",
+        "table": "customer",
+        "start": {
+          "targetEntity": "Customer",
+          "keys": [{"nodeColumn": "CUSTOMER_ID", "relationshipColumn": "CUSTOMER_ID"}]
+        },
+        "end": {
+          "targetEntity": "Store",
+          "keys": [{"nodeColumn": "STORE_ID", "relationshipColumn": "STORE_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "CUSTOMER_ID"}]
+      }
+    ]
+  }
+}

@@ -2,7 +2,7 @@
 
 A hands-on sandbox for exploring the **Neo4j Virtual Graphs** feature, which lets you query relational database tables as if they were a native graph — using Cypher, with no ETL required.
 
-The repository ships with two pre-configured relational backends: **PostgreSQL** and **Oracle Free**. Switching between them is a single line change in `.env`.
+The repository ships with three pre-configured relational backends: **PostgreSQL**, **Oracle Free**, and **Sakila (PostgreSQL)**. Switching between them is a single line change in `.env`.
 
 ---
 
@@ -10,10 +10,16 @@ The repository ships with two pre-configured relational backends: **PostgreSQL**
 
 Neo4j Virtual Graphs reads a small set of JSON configuration files (`datasource.json`, `schema.json`, `secret.json`) at startup and exposes the relational tables as virtual nodes and relationships. Queries execute live against the relational source; no data is copied into Neo4j.
 
-The dataset used throughout is the classic **movies graph**: `Person` nodes, `Movie` nodes, and `ACTED_IN` relationships, all backed by three relational tables.
+The PostgreSQL and Oracle backends use the classic **movies graph**: `Person` nodes, `Movie` nodes, and `ACTED_IN` relationships. The Sakila backend maps the full [Sakila](https://github.com/sakiladb/postgres) DVD rental dataset to a richer graph with 12 node types and 16 relationship types.
 
 ```
+# Movies backends
 (Person)-[:ACTED_IN {role}]->(Movie)
+
+# Sakila backend
+(Actor)-[:ACTED_IN]->(Film)-[:IN_CATEGORY]->(Category)
+(Customer)-[:MADE]->(Rental)-[:RENTS]->(Inventory)-[:COPY_OF]->(Film)
+(Customer)-[:HAS_ADDRESS]->(Address)-[:IN_CITY]->(City)-[:IN_COUNTRY]->(Country)
 ```
 
 ---
@@ -33,11 +39,14 @@ The dataset used throughout is the classic **movies graph**: `Person` nodes, `Mo
 Open `.env` and uncomment the line for the backend you want:
 
 ```dotenv
-# PostgreSQL (default)
-COMPOSE_FILE=docker-compose.yml:docker-compose-postgres.yml
+# PostgreSQL (movies graph)
+# COMPOSE_FILE=docker-compose.yml:docker-compose-postgres.yml
 
-# Oracle — comment the line above and uncomment this one
+# Oracle (movies graph)
 # COMPOSE_FILE=docker-compose.yml:docker-compose-oracle.yml
+
+# Sakila — DVD rental dataset (active by default)
+COMPOSE_FILE=docker-compose.yml:docker-compose-sakila.yml
 ```
 
 ### 2. Start the stack
@@ -81,8 +90,9 @@ RETURN path;
 .
 ├── .env                              # Backend selector — edit this to switch databases
 ├── docker-compose.yml                # Base Neo4j service definition
-├── docker-compose-postgres.yml       # PostgreSQL overlay
-├── docker-compose-oracle.yml         # Oracle overlay
+├── docker-compose-postgres.yml       # PostgreSQL overlay (movies graph)
+├── docker-compose-oracle.yml         # Oracle overlay (movies graph)
+├── docker-compose-sakila.yml         # Sakila overlay (DVD rental graph)
 └── config/
     ├── postgres/
     │   ├── initdb/
@@ -93,15 +103,20 @@ RETURN path;
     │       ├── datasource.json       # JDBC connection URL
     │       ├── secret.json           # Credentials
     │       └── schema.json           # Table → node/relationship mapping
-    └── oracle/
-        ├── initdb/
-        │   └── init.sql
-        ├── jdbc/
-        │   └── ojdbc17.jar
-        └── nvg-config/
+    ├── oracle/
+    │   ├── initdb/
+    │   │   └── init.sql
+    │   ├── jdbc/
+    │   │   └── ojdbc17.jar
+    │   └── nvg-config/
+    │       ├── datasource.json
+    │       ├── secret.json
+    │       └── schema.json
+    └── sakila/
+        └── nvg-config/               # No initdb — data ships inside the Docker image
             ├── datasource.json
             ├── secret.json
-            └── schema.json
+            └── schema.json           # 12 node types, 16 relationship types
 ```
 
 ### NVG configuration files
@@ -139,6 +154,52 @@ WAL logical replication is enabled (`wal_level=logical`) to support future CDC u
 | JDBC URL | `jdbc:oracle:thin:@//oracle-vg:1521/FREEPDB1` |
 
 > Oracle's container takes 60–120 seconds to initialize on the first run. The healthcheck (`healthcheck.sh`) gates Neo4j startup, so the virtual graph will become available automatically once Oracle is ready.
+
+### Sakila (PostgreSQL)
+
+| Property | Value |
+|----------|-------|
+| Image | `sakiladb/postgres:latest` |
+| Host port | `5489` |
+| Database | `sakila` |
+| User / Password | `sakila` / `p_ssW0rd` |
+| JDBC URL | `jdbc:postgresql://sakila-vg:5432/sakila` |
+
+The image ships pre-populated with the full [Sakila dataset](https://github.com/sakiladb/postgres) — no `init.sql` needed. The graph model covers the complete rental domain:
+
+| Node | Source table |
+|------|-------------|
+| `Actor`, `Film`, `Category`, `Language` | `actor`, `film`, `category`, `language` |
+| `Customer`, `Store`, `Staff` | `customer`, `store`, `staff` |
+| `Inventory`, `Rental` | `inventory`, `rental` |
+| `Address`, `City`, `Country` | `address`, `city`, `country` |
+
+| Relationship | Mapped from |
+|---|---|
+| `(Actor)-[:ACTED_IN]->(Film)` | `film_actor` junction table |
+| `(Film)-[:IN_CATEGORY]->(Category)` | `film_category` junction table |
+| `(Film)-[:IN_LANGUAGE]->(Language)` | `film.language_id` FK |
+| `(Inventory)-[:COPY_OF]->(Film)`, `(Inventory)-[:IN_STORE]->(Store)` | `inventory` FKs |
+| `(Customer)-[:MADE]->(Rental)-[:RENTS]->(Inventory)` | `rental` FKs |
+| `(Rental)-[:PROCESSED_BY]->(Staff)` | `rental.staff_id` FK |
+| `(Customer/Store/Staff)-[:HAS_ADDRESS]->(Address)` | respective table FKs |
+| `(Address)-[:IN_CITY]->(City)-[:IN_COUNTRY]->(Country)` | `address`, `city` FKs |
+| `(Store)-[:MANAGED_BY]->(Staff)`, `(Staff)-[:WORKS_AT]->(Store)` | `store`, `staff` FKs |
+| `(Customer)-[:SHOPS_AT]->(Store)` | `customer.store_id` FK |
+
+Example queries:
+
+```cypher
+// Rental journey: who rented what film and in which category
+MATCH p = (cust:Customer)-[:MADE]->(r:Rental)-[:RENTS]->(inv:Inventory)-[:COPY_OF]->(f:Film)-[:IN_CATEGORY]->(cat:Category)
+RETURN p LIMIT 10
+
+// Actor → Film → Language chain
+MATCH p = (a:Actor)-[:ACTED_IN]->(f:Film)-[:IN_LANGUAGE]->(lang:Language)
+RETURN p LIMIT 10
+```
+
+> **Note:** PostgreSQL `boolean` columns (`activebool`, `active`) are not mapped — NVG's JDBC bit mapper cannot handle PostgreSQL's `t`/`f` wire format.
 
 ---
 
@@ -295,5 +356,6 @@ docker compose down -v
 | Service | Username | Password |
 |---------|----------|----------|
 | Neo4j | `neo4j` | `hellopassword` |
-| PostgreSQL | `nvg` | `nvg` |
-| Oracle | `nvg` | `nvg` |
+| PostgreSQL (movies) | `nvg` | `nvg` |
+| Oracle (movies) | `nvg` | `nvg` |
+| Sakila (PostgreSQL) | `sakila` | `p_ssW0rd` |

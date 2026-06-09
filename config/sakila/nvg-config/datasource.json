@@ -1,0 +1,4 @@
+{
+  "type" : "generic",
+  "url" : "jdbc:postgresql://sakila-vg:5432/sakila"
+}
