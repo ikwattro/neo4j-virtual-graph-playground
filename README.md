@@ -1,4 +1,4 @@
-# Neo4j Virtual Graphs — Relational Backend Playground
+# Neo4j Virtual Graphs Playground
 
 A hands-on sandbox for exploring the **Neo4j Virtual Graphs** feature, which lets you query relational database tables as if they were a native graph — using Cypher, with no ETL required.
 
