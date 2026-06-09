@@ -10,3 +10,6 @@
 config/lakegraph/jdbc/*.jar
 config/postgres/jdbc/*.jar
 config/oracle/jdbc/*.jar
+
+# PyIceberg local catalog tracker — generated during warehouse creation, not needed at runtime
+iceberg_catalog.db

@@ -1,0 +1,65 @@
+volumes:
+  minio-icegraph:
+  duckdb-icegraph-data:
+
+services:
+  minio:
+    image: minio/minio:latest
+    environment:
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=hellopassword
+    volumes:
+      - minio-icegraph:/data
+    ports:
+      - 9000:9000
+      - 9001:9001
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  minio-mc:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./config/icegraph/warehouse:/warehouse
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set local http://minio:9000 minio hellopassword &&
+      /usr/bin/mc mb --ignore-existing local/iceberg-data &&
+      /usr/bin/mc cp --recursive /warehouse/ local/iceberg-data/ &&
+      echo 'Iceberg warehouse uploaded to iceberg-data bucket.' &&
+      exit 0;
+      "
+
+  duckdb:
+    build:
+      context: ./config/icegraph/duckdb
+    container_name: duckdb-icegraph-playground
+    depends_on:
+      minio:
+        condition: service_healthy
+      minio-mc:
+        condition: service_completed_successfully
+    volumes:
+      - duckdb-icegraph-data:/data
+    healthcheck:
+      test: ["CMD", "test", "-f", "/data/movies.duckdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
+
+  neo4j:
+    depends_on:
+      duckdb:
+        condition: service_healthy
+    volumes:
+      - "./config/lakegraph/jdbc/duckdb_jdbc-1.5.3.0.jar:/var/lib/neo4j/lib/duckdb_jdbc-1.5.3.0.jar"
+      - "./config/icegraph/nvg-config:/nvg_home"
+      - "duckdb-icegraph-data:/duckdb-data:ro"

@@ -2,13 +2,15 @@
 
 A hands-on sandbox for exploring the **Neo4j Virtual Graphs** feature, which lets you query relational database tables as if they were a native graph — using Cypher, with no ETL required.
 
-The repository ships with four pre-configured backends split into two tiers:
+The repository ships with five pre-configured backends split into two tiers:
 
-| Tier | Backends | What makes them interesting |
-|------|----------|----------------------------|
-| **Simple** | PostgreSQL, Oracle Free | Single-service JDBC connection, classic movies graph |
-| **Intermediate** | [Sakila](#sakila) | More complex relational db schema |
-| **Advanced** | [LakeGraph](#lakegraph) | DuckDB tables on top of CSV files in Minio |
+| Tier | Backend | What makes it interesting |
+|------|---------|--------------------------|
+| **Simple** | [PostgreSQL](#simple-backends) | Single-service JDBC connection, classic movies graph |
+| **Simple** | [Oracle Free](#simple-backends) | Single-service JDBC connection, classic movies graph |
+| **Intermediate** | [Sakila](#sakila) | More complex relational schema — DVD rental store |
+| **Advanced** | [LakeGraph](#lakegraph) | CSV files in MinIO, materialized by DuckDB on startup |
+| **Advanced** | [IceGraph](#icegraph) | Pre-built Apache Iceberg tables (Parquet) in MinIO, queried via DuckDB |
 
 ---
 
@@ -45,6 +47,9 @@ Open `.env` and uncomment the line for the backend you want:
 
 # LakeGraph — data lake via MinIO + DuckDB (movies graph)
 # COMPOSE_FILE=docker-compose.yml:docker-compose-lakegraph.yml
+
+# IceGraph — Apache Iceberg tables in MinIO, queried via DuckDB (movies graph)
+# COMPOSE_FILE=docker-compose.yml:docker-compose-icegraph.yml
 ```
 
 ### 2. Start the stack
@@ -175,7 +180,7 @@ RETURN p LIMIT 10
 
 ### LakeGraph
 
-**The most advanced backend.** Instead of connecting to a relational database, this setup builds a full **data lake pipeline** and exposes it as a graph:
+**An advanced data lake backend.** Instead of connecting to a relational database, this setup builds a full **data lake pipeline** and exposes it as a graph:
 
 ```
 CSV files in MinIO (S3-compatible object storage)
@@ -201,7 +206,7 @@ curl -O https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/1.5.3.0/duckdb_jdb
 **2. Start the stack:**
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose-lakegraph.yml up --build
+docker compose up --build -d
 ```
 
 > Use `--build` any time you change files under `config/lakegraph/duckdb/` — Docker won't rebuild the image otherwise.
@@ -260,8 +265,6 @@ ORDER BY m.release_year
 
 #### Exploring DuckDB directly
 
-You can query the lake before Neo4j even sees it:
-
 ```bash
 docker exec -it duckdb-playground duckdb /data/movies.duckdb
 ```
@@ -277,43 +280,220 @@ GROUP BY p.name ORDER BY films DESC;
 
 ---
 
+### IceGraph
+
+**The most advanced backend.** IceGraph demonstrates a proper modern data lake stack — the movies dataset is stored as **Apache Iceberg tables** (Parquet data files + Iceberg metadata) in MinIO. DuckDB reads them natively via its `iceberg` extension and exposes them through Neo4j Virtual Graphs.
+
+```
+Pre-built Apache Iceberg warehouse (committed to the repo)
+    ↓  uploaded to MinIO by minio-mc on startup
+MinIO (S3-compatible object storage)
+    ↓  iceberg_scan() via DuckDB iceberg extension
+DuckDB (embedded, file-based)
+    ↓  read via JDBC driver (shared Docker volume)
+Neo4j Virtual Graphs
+    ↓  queried with Cypher
+You
+```
+
+The Iceberg warehouse (Parquet data files + Avro manifests + metadata JSON) is pre-generated and committed under `config/icegraph/warehouse/`. No runtime init container or catalog service is needed — `minio-mc` uploads the warehouse tree on startup and DuckDB reads it directly.
+
+#### Setup
+
+**1. Download the DuckDB JDBC driver** (shared with LakeGraph — skip if already done):
+
+```bash
+cd config/lakegraph/jdbc
+curl -O https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/1.5.3.0/duckdb_jdbc-1.5.3.0.jar
+```
+
+**2. Start the stack:**
+
+```bash
+docker compose up --build -d
+```
+
+**Startup sequence:**
+
+1. **MinIO** starts and passes its healthcheck
+2. **minio-mc** uploads the full Iceberg warehouse to the `iceberg-data` bucket, then exits
+3. **DuckDB** waits for mc to complete, reads 7 Iceberg tables via `iceberg_scan`, and materializes them to `movies.duckdb`
+4. **Neo4j** waits for DuckDB's healthcheck (file exists), then mounts the volume and boots
+
+#### Services
+
+| Service | Port | Credentials |
+|---------|------|-------------|
+| MinIO API | `9000` | `minio` / `hellopassword` |
+| MinIO Console | `9001` | `minio` / `hellopassword` |
+| DuckDB CLI | — | `docker exec -it duckdb-icegraph-playground duckdb /data/movies.duckdb` |
+
+#### Graph model
+
+Same as LakeGraph:
+
+```
+(Person)-[:DIRECTED]->(Movie)
+(Person)-[:ACTED_IN {character}]->(Movie)
+(Movie)-[:IN_GENRE]->(Genre)
+```
+
+| Node | Source table | Key properties |
+|------|-------------|----------------|
+| `Movie` | `movies` | `title`, `release_year`, `runtime_minutes`, `budget_usd`, `revenue_usd` |
+| `Person` | `people` | `name`, `birth_year`, `nationality` |
+| `Genre` | `genres` | `name` |
+
+| Relationship | Source table | Notes |
+|---|---|---|
+| `ACTED_IN` | `movie_actors` | has `character` property |
+| `DIRECTED` | `movie_directors` | |
+| `IN_GENRE` | `movie_genres` | junction table |
+
+#### Sample queries
+
+```cypher
+// All paths through the graph
+MATCH path = (p:Person)-[:ACTED_IN]->(m:Movie)-[:IN_GENRE]->(g:Genre)
+RETURN path LIMIT 25
+
+// 3-hop path: actor → shared movie ← co-actor → another movie
+MATCH path = (p:Person)-[:ACTED_IN]->(m:Movie)<-[:ACTED_IN]-(co:Person)-[:ACTED_IN]->(m2:Movie)
+WHERE p <> co AND m <> m2
+RETURN p.name AS actor, m.title AS shared_movie, co.name AS co_actor, m2.title AS other_movie
+LIMIT 10
+
+// Directors and their genres
+MATCH (p:Person)-[:DIRECTED]->(m:Movie)-[:IN_GENRE]->(g:Genre)
+RETURN p.name, collect(DISTINCT g.name) AS genres
+ORDER BY size(collect(DISTINCT g.name)) DESC
+```
+
+#### Exploring DuckDB directly
+
+```bash
+docker exec -it duckdb-icegraph-playground duckdb /data/movies.duckdb
+```
+
+```sql
+SHOW TABLES;
+SELECT title, revenue_usd FROM movies ORDER BY revenue_usd DESC LIMIT 5;
+-- The underlying Parquet files are in MinIO — browse them at http://localhost:9001
+```
+
+#### Regenerating the warehouse
+
+The Iceberg warehouse is pre-built and committed. If you need to regenerate it (e.g. after changing the source CSVs), install PyIceberg in a temporary environment and run:
+
+```bash
+python3 -m venv /tmp/iceberg-gen
+/tmp/iceberg-gen/bin/pip install "pyiceberg[sql-sqlite,pyarrow]" pyarrow
+/tmp/iceberg-gen/bin/python3 - <<'EOF'
+import os, shutil, pyarrow.csv as pcsv, pyarrow.compute as pc
+from pyiceberg.catalog import load_catalog
+from pyiceberg.io.pyarrow import pyarrow_to_schema
+from pyiceberg.schema import Schema
+from pyiceberg.types import NestedField, StringType, LongType
+import pyarrow as pa
+
+WAREHOUSE = os.path.abspath("config/icegraph/warehouse")
+if os.path.exists(WAREHOUSE):
+    shutil.rmtree(WAREHOUSE)
+os.makedirs(WAREHOUSE)
+
+catalog = load_catalog("local", **{
+    "type": "sql",
+    "uri": f"sqlite:///{WAREHOUSE}/iceberg_catalog.db",
+    "warehouse": f"file://{WAREHOUSE}",
+})
+catalog.create_namespace("movies")
+
+def iceberg_schema(pa_schema):
+    fields = []
+    for i, f in enumerate(pa_schema, 1):
+        t = LongType() if pa.types.is_int64(f.type) or pa.types.is_int32(f.type) else StringType()
+        fields.append(NestedField(i, f.name, t, required=False))
+    return Schema(*fields)
+
+def write(df, name):
+    t = catalog.create_table(f"movies.{name}", schema=iceberg_schema(df.schema))
+    t.overwrite(df)
+    print(f"  {name}: {len(df)} rows")
+
+crew = pcsv.read_csv("config/minio/movie_crew.csv")
+write(pcsv.read_csv("config/minio/movies.csv"),      "movies")
+write(pcsv.read_csv("config/minio/genres.csv"),      "genres")
+write(pcsv.read_csv("config/minio/movie_genres.csv"),"movie_genres")
+write(pcsv.read_csv("config/minio/people.csv"),      "people")
+write(crew,                                           "movie_crew")
+write(crew.filter(pc.equal(crew["role"],"Actor")).select(["movie_id","person_id","character_name"]), "movie_actors")
+write(crew.filter(pc.equal(crew["role"],"Director")).select(["movie_id","person_id"]),               "movie_directors")
+EOF
+
+# Add version-hint.text and v1.metadata.json aliases for DuckDB compatibility
+for table in movies genres movie_genres people movie_crew movie_actors movie_directors; do
+  dir="config/icegraph/warehouse/movies/${table}/metadata"
+  printf "1" > "${dir}/version-hint.text"
+  cp "${dir}"/00001-*.metadata.json "${dir}/v1.metadata.json"
+done
+rm -f config/icegraph/warehouse/iceberg_catalog.db
+```
+
+---
+
 ## Repository Structure
 
 ```
 .
-├── .env                                  # Backend selector — edit this to switch
-├── docker-compose.yml                    # Base Neo4j service definition
-├── docker-compose-postgres.yml           # Simple: PostgreSQL overlay
-├── docker-compose-oracle.yml             # Simple: Oracle overlay
-├── docker-compose-sakila.yml             # Advanced: Sakila overlay
-├── docker-compose-lakegraph.yml          # Advanced: LakeGraph (MinIO + DuckDB)
+├── .env                                      # Backend selector — edit this to switch
+├── docker-compose.yml                        # Base Neo4j service definition
+├── docker-compose-postgres.yml               # Simple: PostgreSQL overlay
+├── docker-compose-oracle.yml                 # Simple: Oracle overlay
+├── docker-compose-sakila.yml                 # Advanced: Sakila overlay
+├── docker-compose-lakegraph.yml              # Advanced: LakeGraph (MinIO + DuckDB)
+├── docker-compose-icegraph.yml               # Advanced: IceGraph (Iceberg + MinIO + DuckDB)
 └── config/
-    ├── postgres/                         # Simple backend
+    ├── minio/                                # Shared CSV source files (movies dataset)
+    │   ├── movies.csv
+    │   ├── genres.csv
+    │   ├── movie_genres.csv
+    │   ├── people.csv
+    │   └── movie_crew.csv
+    ├── postgres/
     │   ├── initdb/init.sql
     │   ├── jdbc/postgresql-42.7.11.jar
     │   └── nvg-config/
-    ├── oracle/                           # Simple backend
+    ├── oracle/
     │   ├── initdb/init.sql
     │   ├── jdbc/ojdbc17.jar
     │   └── nvg-config/
-    ├── sakila/                           # Advanced backend
-    │   └── nvg-config/                   # No initdb — data ships in the Docker image
-    └── lakegraph/                        # Advanced backend
+    ├── sakila/
+    │   └── nvg-config/
+    ├── lakegraph/
+    │   ├── duckdb/
+    │   │   ├── Dockerfile
+    │   │   ├── init.sql                      # Pulls CSVs from MinIO, creates 7 tables
+    │   │   ├── duckdbrc                      # Auto-loaded S3 credentials for CLI sessions
+    │   │   └── entrypoint.sh
+    │   ├── jdbc/
+    │   │   └── duckdb_jdbc-1.5.3.0.jar       # Download manually (see setup above)
+    │   └── nvg-config/
+    └── icegraph/
         ├── duckdb/
-        │   ├── Dockerfile                # Builds DuckDB CLI image
-        │   ├── init.sql                  # Pulls CSVs from MinIO, creates 7 tables
-        │   ├── duckdbrc                  # Auto-loaded S3 credentials for CLI sessions
+        │   ├── Dockerfile
+        │   ├── init.sql                      # Reads 7 Iceberg tables via iceberg_scan
         │   └── entrypoint.sh
-        ├── jdbc/
-        │   └── duckdb_jdbc-1.5.3.0.jar  # Download manually (see setup above)
-        ├── minio/                        # CSV source files
-        │   ├── movies.csv
-        │   ├── genres.csv
-        │   ├── movie_genres.csv
-        │   ├── people.csv
-        │   └── movie_crew.csv
+        ├── warehouse/                        # Pre-built Iceberg tables (committed)
+        │   └── movies/
+        │       ├── movies/                   # data/*.parquet + metadata/*.json + *.avro
+        │       ├── genres/
+        │       ├── movie_genres/
+        │       ├── people/
+        │       ├── movie_crew/
+        │       ├── movie_actors/
+        │       └── movie_directors/
         └── nvg-config/
-            ├── datasource.json           # type: duckdb, path to mounted .duckdb file
+            ├── datasource.json               # type: duckdb, path to mounted .duckdb file
             ├── secret.json
             └── schema.json
 ```
@@ -404,3 +584,4 @@ docker compose down -v
 | Oracle (movies) | `nvg` | `nvg` |
 | Sakila (PostgreSQL) | `sakila` | `p_ssW0rd` |
 | MinIO (LakeGraph) | `minio` | `hellopassword` |
+| MinIO (IceGraph) | `minio` | `hellopassword` |
