@@ -7,8 +7,8 @@ The repository ships with four pre-configured backends split into two tiers:
 | Tier | Backends | What makes them interesting |
 |------|----------|----------------------------|
 | **Simple** | PostgreSQL, Oracle Free | Single-service JDBC connection, classic movies graph |
-| **Intermediate** | Sakila | More complex relational db schema |
-| **Advanced** | LakeGraph | DuckDB tables on top of CSV files in Minio |
+| **Intermediate** | [Sakila](#sakila) | More complex relational db schema |
+| **Advanced** | [LakeGraph](#lakegraph) | DuckDB tables on top of CSV files in Minio |
 
 ---
 
