@@ -1,0 +1,4 @@
+{
+  "type" : "generic",
+  "url" : "jdbc:oracle:thin:@//oracle-vg:1521/FREEPDB1"
+}

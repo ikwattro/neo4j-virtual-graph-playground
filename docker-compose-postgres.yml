@@ -1,0 +1,27 @@
+volumes:
+  nvg_postgres_data:
+services:
+  postgres-vg:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_PASSWORD: nvg
+      POSTGRES_USER: nvg
+    ports:
+      - 5488:5432
+    volumes:
+      - "nvg_postgres_data:/var/lib/postgresql/data"
+      - "./config/postgres/initdb:/docker-entrypoint-initdb.d"
+    command: ["postgres", "-c", "wal_level=logical", "-c", "log_statement=all"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nvg"]
+      interval: 5s
+      retries: 10
+      start_period: 10s
+      timeout: 5s
+  neo4j:
+    depends_on:
+      postgres-vg:
+        condition: service_healthy
+    volumes:
+      - "./config/postgres/jdbc/postgresql-42.7.11.jar:/var/lib/neo4j/lib/postgresql-42.7.11.jar"
+      - "./config/postgres/nvg-config:/nvg_home"
