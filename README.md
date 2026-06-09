@@ -248,12 +248,6 @@ docker compose -f docker-compose.yml -f docker-compose-lakegraph.yml up --build
 MATCH path = (p:Person)-[:ACTED_IN]->(m:Movie)-[:IN_GENRE]->(g:Genre)
 RETURN path LIMIT 25
 
-// Shortest connection between two people
-MATCH path = shortestPath(
-  (p1:Person {name: 'Morgan Freeman'})-[:ACTED_IN|DIRECTED*..6]-(p2:Person {name: 'Brad Pitt'})
-)
-RETURN path
-
 // Director → films → genres
 MATCH path = (p:Person {name: 'Christopher Nolan'})-[:DIRECTED]->(m:Movie)-[:IN_GENRE]->(g:Genre)
 RETURN path
