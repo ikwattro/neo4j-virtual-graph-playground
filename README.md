@@ -193,7 +193,11 @@ Example queries:
 // Rental journey: who rented what film and in which category
 MATCH p = (cust:Customer)-[:MADE]->(r:Rental)-[:RENTS]->(inv:Inventory)-[:COPY_OF]->(f:Film)-[:IN_CATEGORY]->(cat:Category)
 RETURN p LIMIT 10
+```
 
+![sakila virtual graph](./screenshot-sakila.png)
+
+```cypher
 // Actor → Film → Language chain
 MATCH p = (a:Actor)-[:ACTED_IN]->(f:Film)-[:IN_LANGUAGE]->(lang:Language)
 RETURN p LIMIT 10
