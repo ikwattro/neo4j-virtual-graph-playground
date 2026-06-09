@@ -5,3 +5,8 @@
 .idea/
 .vscode/
 *.swp
+
+# JDBC drivers — download manually, do not commit binaries
+config/lakegraph/jdbc/*.jar
+config/postgres/jdbc/*.jar
+config/oracle/jdbc/*.jar
