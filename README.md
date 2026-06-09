@@ -2,25 +2,18 @@
 
 A hands-on sandbox for exploring the **Neo4j Virtual Graphs** feature, which lets you query relational database tables as if they were a native graph — using Cypher, with no ETL required.
 
-The repository ships with three pre-configured relational backends: **PostgreSQL**, **Oracle Free**, and **Sakila (PostgreSQL)**. Switching between them is a single line change in `.env`.
+The repository ships with four pre-configured backends split into two tiers:
+
+| Tier | Backends | What makes them interesting |
+|------|----------|----------------------------|
+| **Simple** | PostgreSQL, Oracle Free | Single-service JDBC connection, classic movies graph |
+| **Advanced** | Sakila, LakeGraph (DuckDB tables on top of Minio) |
 
 ---
 
 ## How It Works
 
-Neo4j Virtual Graphs reads a small set of JSON configuration files (`datasource.json`, `schema.json`, `secret.json`) at startup and exposes the relational tables as virtual nodes and relationships. Queries execute live against the relational source; no data is copied into Neo4j.
-
-The PostgreSQL and Oracle backends use the classic **movies graph**: `Person` nodes, `Movie` nodes, and `ACTED_IN` relationships. The Sakila backend maps the full [Sakila](https://github.com/sakiladb/postgres) DVD rental dataset to a richer graph with 12 node types and 16 relationship types.
-
-```
-# Movies backends
-(Person)-[:ACTED_IN {role}]->(Movie)
-
-# Sakila backend
-(Actor)-[:ACTED_IN]->(Film)-[:IN_CATEGORY]->(Category)
-(Customer)-[:MADE]->(Rental)-[:RENTS]->(Inventory)-[:COPY_OF]->(Film)
-(Customer)-[:HAS_ADDRESS]->(Address)-[:IN_CITY]->(City)-[:IN_COUNTRY]->(Country)
-```
+Neo4j Virtual Graphs reads a small set of JSON configuration files (`datasource.json`, `schema.json`, `secret.json`) at startup and exposes the relational tables as virtual nodes and relationships. Queries execute live against the relational source — no data is copied into Neo4j.
 
 ---
 
@@ -29,6 +22,7 @@ The PostgreSQL and Oracle backends use the classic **movies graph**: `Person` no
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose plugin)
 - A valid **Neo4j Enterprise** license — the image used is `neo4j:2026.05.0-enterprise` and will not start without accepting the license agreement (already set in the compose file via `NEO4J_ACCEPT_LICENSE_AGREEMENT=yes`)
 - For Oracle: the `gvenzl/oracle-free:23-slim` image takes 60–120 seconds to initialize on first run
+- For LakeGraph: the DuckDB JDBC driver must be downloaded manually (see below)
 
 ---
 
@@ -45,8 +39,11 @@ Open `.env` and uncomment the line for the backend you want:
 # Oracle (movies graph)
 # COMPOSE_FILE=docker-compose.yml:docker-compose-oracle.yml
 
-# Sakila — DVD rental dataset (active by default)
-COMPOSE_FILE=docker-compose.yml:docker-compose-sakila.yml
+# Sakila — DVD rental dataset
+# COMPOSE_FILE=docker-compose.yml:docker-compose-sakila.yml
+
+# LakeGraph — data lake via MinIO + DuckDB (movies graph)
+# COMPOSE_FILE=docker-compose.yml:docker-compose-lakegraph.yml
 ```
 
 ### 2. Start the stack
@@ -61,75 +58,21 @@ Docker Compose automatically reads `.env`, so no extra flags are needed. The dat
 
 Navigate to `http://localhost:7474` and connect with:
 
-| Field    | Value           |
-|----------|-----------------|
+| Field    | Value |
+|----------|-------|
 | URL      | `bolt://localhost:7687` |
-| Username | `neo4j`         |
+| Username | `neo4j` |
 | Password | `hellopassword` |
 
-### 4. Query the virtual graph
-
-```cypher
-// List all movies in the virtual graph
-MATCH (m:Movie) RETURN m.title, m.release_year ORDER BY m.release_year DESC LIMIT 10;
-
-// Find actors and the films they appeared in
-MATCH path=(p:Person)-[r:ACTED_IN]->(m:Movie)
-RETURN path;
-
-// Find co-actors of Keanu Reeves
-MATCH path=(keanu:Person {name: 'Keanu Reeves'})-[:ACTED_IN]->(m:Movie)<-[:ACTED_IN]-(coactor:Person)
-RETURN path;
-```
-![virtual graphs](./screenshot1.png)
 ---
 
-## Repository Structure
+## Simple Backends
+
+These backends wire a single database container directly to Neo4j via JDBC. They both expose the classic **movies graph**: `Person` nodes, `Movie` nodes, and `ACTED_IN` relationships.
 
 ```
-.
-├── .env                              # Backend selector — edit this to switch databases
-├── docker-compose.yml                # Base Neo4j service definition
-├── docker-compose-postgres.yml       # PostgreSQL overlay (movies graph)
-├── docker-compose-oracle.yml         # Oracle overlay (movies graph)
-├── docker-compose-sakila.yml         # Sakila overlay (DVD rental graph)
-└── config/
-    ├── postgres/
-    │   ├── initdb/
-    │   │   └── init.sql              # Schema + seed data (runs on first container start)
-    │   ├── jdbc/
-    │   │   └── postgresql-42.7.11.jar
-    │   └── nvg-config/
-    │       ├── datasource.json       # JDBC connection URL
-    │       ├── secret.json           # Credentials
-    │       └── schema.json           # Table → node/relationship mapping
-    ├── oracle/
-    │   ├── initdb/
-    │   │   └── init.sql
-    │   ├── jdbc/
-    │   │   └── ojdbc17.jar
-    │   └── nvg-config/
-    │       ├── datasource.json
-    │       ├── secret.json
-    │       └── schema.json
-    └── sakila/
-        └── nvg-config/               # No initdb — data ships inside the Docker image
-            ├── datasource.json
-            ├── secret.json
-            └── schema.json           # 12 node types, 16 relationship types
+(Person)-[:ACTED_IN {role}]->(Movie)
 ```
-
-### NVG configuration files
-
-| File             | Purpose |
-|------------------|---------|
-| `datasource.json` | JDBC driver type and connection URL |
-| `secret.json`     | Authentication credentials |
-| `schema.json`     | Maps tables/columns to graph labels, properties, and relationship keys |
-
----
-
-## Backend Details
 
 ### PostgreSQL
 
@@ -153,9 +96,30 @@ WAL logical replication is enabled (`wal_level=logical`) to support future CDC u
 | Schema / Password | `NVG` / `nvg` |
 | JDBC URL | `jdbc:oracle:thin:@//oracle-vg:1521/FREEPDB1` |
 
-> Oracle's container takes 60–120 seconds to initialize on the first run. The healthcheck (`healthcheck.sh`) gates Neo4j startup, so the virtual graph will become available automatically once Oracle is ready.
+> Oracle's container takes 60–120 seconds to initialize on the first run. The healthcheck gates Neo4j startup automatically.
 
-### Sakila (PostgreSQL)
+**Sample queries:**
+
+```cypher
+MATCH (m:Movie) RETURN m.title, m.release_year ORDER BY m.release_year DESC LIMIT 10
+
+MATCH path = (p:Person)-[:ACTED_IN]->(m:Movie) RETURN path LIMIT 25
+
+MATCH path = (keanu:Person {name: 'Keanu Reeves'})-[:ACTED_IN]->(m:Movie)<-[:ACTED_IN]-(co:Person)
+RETURN path
+```
+
+![virtual graphs](./screenshot1.png)
+
+---
+
+## Advanced Backends
+
+These backends involve multi-service stacks, richer graph models, and more interesting Cypher to write.
+
+### Sakila
+
+The [Sakila dataset](https://github.com/sakiladb/postgres) is a DVD rental store — customers, films, inventory, staff, stores, addresses. The graph model covers 12 node types and 16 relationship types.
 
 | Property | Value |
 |----------|-------|
@@ -165,131 +129,17 @@ WAL logical replication is enabled (`wal_level=logical`) to support future CDC u
 | User / Password | `sakila` / `p_ssW0rd` |
 | JDBC URL | `jdbc:postgresql://sakila-vg:5432/sakila` |
 
-The image ships pre-populated with the full [Sakila dataset](https://github.com/sakiladb/postgres) — no `init.sql` needed. The graph model covers the complete rental domain:
+The image ships pre-populated — no `init.sql` needed.
 
-```mermaid
-erDiagram
-    ACTOR {
-        int actor_id PK
-        string first_name
-        string last_name
-    }
-    FILM {
-        int film_id PK
-        string title
-        string description
-        int release_year
-        int language_id FK
-        int rental_duration
-        decimal rental_rate
-        int length
-        decimal replacement_cost
-        string rating
-    }
-    CATEGORY {
-        int category_id PK
-        string name
-    }
-    LANGUAGE {
-        int language_id PK
-        string name
-    }
-    FILM_ACTOR {
-        int actor_id FK
-        int film_id FK
-    }
-    FILM_CATEGORY {
-        int film_id FK
-        int category_id FK
-    }
-    CUSTOMER {
-        int customer_id PK
-        int store_id FK
-        string first_name
-        string last_name
-        string email
-        int address_id FK
-    }
-    STORE {
-        int store_id PK
-        int manager_staff_id FK
-        int address_id FK
-    }
-    STAFF {
-        int staff_id PK
-        string first_name
-        string last_name
-        int store_id FK
-        int address_id FK
-        string username
-    }
-    INVENTORY {
-        int inventory_id PK
-        int film_id FK
-        int store_id FK
-    }
-    RENTAL {
-        int rental_id PK
-        timestamp rental_date
-        int inventory_id FK
-        int customer_id FK
-        timestamp return_date
-        int staff_id FK
-    }
-    PAYMENT {
-        int payment_id PK
-        int customer_id FK
-        int staff_id FK
-        int rental_id FK
-        decimal amount
-        timestamp payment_date
-    }
-    ADDRESS {
-        int address_id PK
-        string address
-        string district
-        int city_id FK
-        string postal_code
-        string phone
-    }
-    CITY {
-        int city_id PK
-        string city
-        int country_id FK
-    }
-    COUNTRY {
-        int country_id PK
-        string country
-    }
-
-    ACTOR      ||--o{ FILM_ACTOR     : "acts in"
-    FILM       ||--o{ FILM_ACTOR     : "features"
-    FILM       ||--o{ FILM_CATEGORY  : "belongs to"
-    CATEGORY   ||--o{ FILM_CATEGORY  : "categorizes"
-    LANGUAGE   ||--o{ FILM           : "dubbed in"
-    FILM       ||--o{ INVENTORY      : "stocked as"
-    STORE      ||--o{ INVENTORY      : "holds"
-    INVENTORY  ||--o{ RENTAL         : "rented via"
-    CUSTOMER   ||--o{ RENTAL         : "makes"
-    STAFF      ||--o{ RENTAL         : "processes"
-    CUSTOMER   ||--o{ PAYMENT        : "pays"
-    STAFF      ||--o{ PAYMENT        : "collects"
-    RENTAL     ||--o{ PAYMENT        : "settled by"
-    ADDRESS    ||--o{ CUSTOMER       : "address of"
-    ADDRESS    ||--o{ STAFF          : "address of"
-    ADDRESS    ||--o{ STORE          : "location of"
-    CITY       ||--o{ ADDRESS        : "contains"
-    COUNTRY    ||--o{ CITY           : "contains"
-    STAFF      ||--o{ STORE          : "manages"
-    STORE      ||--o{ CUSTOMER       : "serves"
+```
+(Actor)-[:ACTED_IN]->(Film)-[:IN_CATEGORY]->(Category)
+(Customer)-[:MADE]->(Rental)-[:RENTS]->(Inventory)-[:COPY_OF]->(Film)
+(Customer)-[:HAS_ADDRESS]->(Address)-[:IN_CITY]->(City)-[:IN_COUNTRY]->(Country)
+(Store)-[:MANAGED_BY]->(Staff)-[:WORKS_AT]->(Store)
 ```
 
-| Node | Source table |
-|------|-------------|
-| `Actor`, `Film`, `Category`, `Language` | `actor`, `film`, `category`, `language` |
-| `Customer`, `Store`, `Staff` | `customer`, `store`, `staff` |
-| `Inventory`, `Rental` | `inventory`, `rental` |
-| `Address`, `City`, `Country` | `address`, `city`, `country` |
+<details>
+<summary>Full relationship table</summary>
 
 | Relationship | Mapped from |
 |---|---|
@@ -304,11 +154,11 @@ erDiagram
 | `(Store)-[:MANAGED_BY]->(Staff)`, `(Staff)-[:WORKS_AT]->(Store)` | `store`, `staff` FKs |
 | `(Customer)-[:SHOPS_AT]->(Store)` | `customer.store_id` FK |
 
-Example queries:
+</details>
 
 ```cypher
-// Rental journey: who rented what film and in which category
-MATCH p = (cust:Customer)-[:MADE]->(r:Rental)-[:RENTS]->(inv:Inventory)-[:COPY_OF]->(f:Film)-[:IN_CATEGORY]->(cat:Category)
+// Rental journey: who rented what film in which category
+MATCH p = (c:Customer)-[:MADE]->(r:Rental)-[:RENTS]->(inv:Inventory)-[:COPY_OF]->(f:Film)-[:IN_CATEGORY]->(cat:Category)
 RETURN p LIMIT 10
 
 // Actor → Film → Language chain
@@ -322,149 +172,229 @@ RETURN p LIMIT 10
 
 ---
 
-## Adding a New Relational Backend
+### LakeGraph
 
-Follow these steps to add a new database (e.g. MySQL, SQL Server, or any JDBC-compatible source).
-
-### 1. Create the configuration directory
+**The most advanced backend.** Instead of connecting to a relational database, this setup builds a full **data lake pipeline** and exposes it as a graph:
 
 ```
-config/
-└── <backend-name>/
-    ├── initdb/
-    │   └── init.sql          # DDL + seed data
-    ├── jdbc/
-    │   └── <driver>.jar      # JDBC driver for the database
-    └── nvg-config/
-        ├── datasource.json
-        ├── secret.json
-        └── schema.json
+CSV files in MinIO (S3-compatible object storage)
+    ↓  materialized on startup by DuckDB
+DuckDB (embedded, file-based)
+    ↓  read via JDBC driver (shared Docker volume)
+Neo4j Virtual Graphs
+    ↓  queried with Cypher
+You
 ```
 
-### 2. Write the NVG config files
+The movies dataset lives as CSV files in a MinIO bucket. On startup, DuckDB pulls them over S3 and materializes them as physical tables in a `.duckdb` file. Neo4j mounts that file via a shared Docker volume and connects using DuckDB's JDBC driver — no network connection to DuckDB, it's embedded directly in the JDBC layer.
 
-**`datasource.json`** — specify the JDBC URL using the Docker Compose service name as the host:
+#### Setup
+
+**1. Download the DuckDB JDBC driver:**
+
+```bash
+cd config/lakegraph/jdbc
+curl -O https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/1.5.3.0/duckdb_jdbc-1.5.3.0.jar
+```
+
+**2. Start the stack:**
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose-lakegraph.yml up --build
+```
+
+> Use `--build` any time you change files under `config/lakegraph/duckdb/` — Docker won't rebuild the image otherwise.
+
+**Startup sequence:**
+
+1. **MinIO** starts and passes its healthcheck
+2. **minio-mc** uploads 5 CSV files to the `movies-data` bucket, then exits
+3. **DuckDB** waits for mc to complete, then materializes 7 tables from MinIO and writes `movies.duckdb`
+4. **Neo4j** waits for DuckDB's healthcheck (file exists), then mounts the volume and boots
+
+#### Services
+
+| Service | Port | Credentials |
+|---------|------|-------------|
+| MinIO API | `9000` | `minio` / `hellopassword` |
+| MinIO Console | `9001` | `minio` / `hellopassword` |
+| DuckDB CLI | — | `docker exec -it duckdb-playground duckdb /data/movies.duckdb` |
+
+#### Graph model
+
+```
+(Person)-[:DIRECTED]->(Movie)
+(Person)-[:ACTED_IN {character}]->(Movie)
+(Movie)-[:IN_GENRE]->(Genre)
+```
+
+| Node | Source | Key properties |
+|------|--------|----------------|
+| `Movie` | `movies` table | `title`, `release_year`, `runtime_minutes`, `budget_usd`, `revenue_usd` |
+| `Person` | `people` table | `name`, `birth_year`, `nationality` |
+| `Genre` | `genres` table | `name` |
+
+| Relationship | Source | Notes |
+|---|---|---|
+| `ACTED_IN` | `movie_actors` | derived from `movie_crew WHERE role = 'Actor'`; has `character` property |
+| `DIRECTED` | `movie_directors` | derived from `movie_crew WHERE role = 'Director'` |
+| `IN_GENRE` | `movie_genres` | junction table |
+
+#### Sample queries
+
+```cypher
+// All paths through the graph
+MATCH path = (p:Person)-[:ACTED_IN]->(m:Movie)-[:IN_GENRE]->(g:Genre)
+RETURN path LIMIT 25
+
+// Shortest connection between two people
+MATCH path = shortestPath(
+  (p1:Person {name: 'Morgan Freeman'})-[:ACTED_IN|DIRECTED*..6]-(p2:Person {name: 'Brad Pitt'})
+)
+RETURN path
+
+// Director → films → genres
+MATCH path = (p:Person {name: 'Christopher Nolan'})-[:DIRECTED]->(m:Movie)-[:IN_GENRE]->(g:Genre)
+RETURN path
+
+// Actors in Crime films with budget info
+MATCH (p:Person)-[:ACTED_IN]->(m:Movie)-[:IN_GENRE]->(g:Genre {name: 'Crime'})
+RETURN p.name, m.title, m.release_year, m.budget_usd
+ORDER BY m.release_year
+```
+
+#### Exploring DuckDB directly
+
+You can query the lake before Neo4j even sees it:
+
+```bash
+docker exec -it duckdb-playground duckdb /data/movies.duckdb
+```
+
+```sql
+SHOW TABLES;
+SELECT title, revenue_usd FROM movies ORDER BY revenue_usd DESC LIMIT 5;
+SELECT p.name, count(*) AS films
+FROM people p JOIN movie_crew mc ON p.person_id = mc.person_id
+WHERE mc.role = 'Actor'
+GROUP BY p.name ORDER BY films DESC;
+```
+
+---
+
+## Repository Structure
+
+```
+.
+├── .env                                  # Backend selector — edit this to switch
+├── docker-compose.yml                    # Base Neo4j service definition
+├── docker-compose-postgres.yml           # Simple: PostgreSQL overlay
+├── docker-compose-oracle.yml             # Simple: Oracle overlay
+├── docker-compose-sakila.yml             # Advanced: Sakila overlay
+├── docker-compose-lakegraph.yml          # Advanced: LakeGraph (MinIO + DuckDB)
+└── config/
+    ├── postgres/                         # Simple backend
+    │   ├── initdb/init.sql
+    │   ├── jdbc/postgresql-42.7.11.jar
+    │   └── nvg-config/
+    ├── oracle/                           # Simple backend
+    │   ├── initdb/init.sql
+    │   ├── jdbc/ojdbc17.jar
+    │   └── nvg-config/
+    ├── sakila/                           # Advanced backend
+    │   └── nvg-config/                   # No initdb — data ships in the Docker image
+    └── lakegraph/                        # Advanced backend
+        ├── duckdb/
+        │   ├── Dockerfile                # Builds DuckDB CLI image
+        │   ├── init.sql                  # Pulls CSVs from MinIO, creates 7 tables
+        │   ├── duckdbrc                  # Auto-loaded S3 credentials for CLI sessions
+        │   └── entrypoint.sh
+        ├── jdbc/
+        │   └── duckdb_jdbc-1.5.3.0.jar  # Download manually (see setup above)
+        ├── minio/                        # CSV source files
+        │   ├── movies.csv
+        │   ├── genres.csv
+        │   ├── movie_genres.csv
+        │   ├── people.csv
+        │   └── movie_crew.csv
+        └── nvg-config/
+            ├── datasource.json           # type: duckdb, path to mounted .duckdb file
+            ├── secret.json
+            └── schema.json
+```
+
+---
+
+## Adding a New Backend
+
+### 1. Create the config directory
+
+```
+config/<backend-name>/
+├── initdb/init.sql      # DDL + seed data (if needed)
+├── jdbc/<driver>.jar    # JDBC driver
+└── nvg-config/
+    ├── datasource.json
+    ├── secret.json
+    └── schema.json
+```
+
+### 2. NVG config files
+
+**`datasource.json`** — use the Docker Compose service name as the JDBC host:
 
 ```json
-{
-  "type": "generic",
-  "url": "jdbc:<dialect>://<service-name>:<port>/<database>"
-}
+{ "type": "generic", "url": "jdbc:<dialect>://<service-name>:<port>/<database>" }
 ```
 
-**`secret.json`** — credentials used to connect:
+**`secret.json`:**
 
 ```json
-{
-  "type": "basic",
-  "username": "<user>",
-  "password": "<password>"
-}
+{ "type": "basic", "username": "<user>", "password": "<password>" }
 ```
 
-**`schema.json`** — map your tables to graph entities. The structure mirrors the existing backends:
+**`schema.json`** — mirrors the structure of existing backends.
 
-```json
-{
-  "catalog": "",
-  "schema": "<db-schema>",
-  "entities": {
-    "nodes": [
-      {
-        "label": "Movie",
-        "table": "movies",
-        "properties": [
-          { "name": "title", "column": "TITLE", "type": "STRING" }
-        ],
-        "key": [{ "column": "ID" }]
-      }
-    ],
-    "relationships": [
-      {
-        "label": "ACTED_IN",
-        "table": "movie_actors",
-        "start": {
-          "targetEntity": "Person",
-          "keys": [{ "nodeColumn": "ID", "relationshipColumn": "PERSON_ID" }]
-        },
-        "end": {
-          "targetEntity": "Movie",
-          "keys": [{ "nodeColumn": "ID", "relationshipColumn": "MOVIE_ID" }]
-        },
-        "properties": [],
-        "key": [
-          { "column": "PERSON_ID" },
-          { "column": "MOVIE_ID" }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### 3. Create the Docker Compose overlay
-
-Create `docker-compose-<backend-name>.yml` at the root of the repo. The file has two responsibilities: define the database service, and extend the `neo4j` service with the JDBC driver and NVG config volume mounts.
+### 3. Docker Compose overlay
 
 ```yaml
-# docker-compose-mysql.yml (example)
-volumes:
-  nvg_mysql_data:
-
 services:
-  mysql-vg:
-    image: mysql:8.4
-    environment:
-      MYSQL_DATABASE: nvg
-      MYSQL_USER: nvg
-      MYSQL_PASSWORD: nvg
-      MYSQL_ROOT_PASSWORD: root
-    ports:
-      - 3306:3306
-    volumes:
-      - "nvg_mysql_data:/var/lib/mysql"
-      - "./config/mysql/initdb:/docker-entrypoint-initdb.d"
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-unvg", "-pnvg"]
-      interval: 5s
-      retries: 10
-      start_period: 30s
-      timeout: 5s
+  my-db:
+    image: ...
+    healthcheck: ...
 
   neo4j:
     depends_on:
-      mysql-vg:
+      my-db:
         condition: service_healthy
     volumes:
-      - "./config/mysql/jdbc/mysql-connector-j-8.4.0.jar:/var/lib/neo4j/lib/mysql-connector-j-8.4.0.jar"
-      - "./config/mysql/nvg-config:/nvg_home"
+      - "./config/<backend>/jdbc/<driver>.jar:/var/lib/neo4j/lib/<driver>.jar"
+      - "./config/<backend>/nvg-config:/nvg_home"
 ```
 
-### 4. Register it in `.env`
-
-Add a new commented-out line so users can switch to it:
+### 4. Register in `.env`
 
 ```dotenv
-# COMPOSE_FILE=docker-compose.yml:docker-compose-mysql.yml
+# COMPOSE_FILE=docker-compose.yml:docker-compose-<backend>.yml
 ```
 
-### 5. Checklist
+### Checklist
 
-- [ ] JDBC driver `.jar` placed in `config/<backend-name>/jdbc/`
-- [ ] `datasource.json` uses the Compose service name as the JDBC host
-- [ ] `schema.json` catalog/schema fields match the database dialect (Oracle requires an empty `catalog`)
-- [ ] Healthcheck in the compose overlay is reliable before Neo4j starts
-- [ ] `init.sql` is idempotent (`CREATE TABLE IF NOT EXISTS`, `INSERT OR IGNORE`, etc.)
+- [ ] JDBC driver jar in `config/<backend>/jdbc/`
+- [ ] `datasource.json` uses the Compose service name as JDBC host
+- [ ] `schema.json` catalog/schema match the database dialect
+- [ ] Healthcheck in the overlay reliably gates Neo4j startup
+- [ ] `init.sql` is idempotent (`CREATE TABLE IF NOT EXISTS`, etc.)
 
 ---
 
 ## Stopping and Resetting
 
 ```bash
-# Stop all containers
+# Stop all containers (data volumes preserved)
 docker compose down
 
-# Stop and delete volumes (full reset — re-runs init.sql on next start)
+# Full reset — deletes volumes, re-runs init on next start
 docker compose down -v
 ```
 
@@ -478,3 +408,4 @@ docker compose down -v
 | PostgreSQL (movies) | `nvg` | `nvg` |
 | Oracle (movies) | `nvg` | `nvg` |
 | Sakila (PostgreSQL) | `sakila` | `p_ssW0rd` |
+| MinIO (LakeGraph) | `minio` | `hellopassword` |

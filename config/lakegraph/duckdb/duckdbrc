@@ -1,0 +1,10 @@
+LOAD httpfs;
+CREATE OR REPLACE SECRET minio (
+    TYPE S3,
+    KEY_ID 'minio',
+    SECRET 'hellopassword',
+    ENDPOINT 'minio:9000',
+    USE_SSL false,
+    URL_STYLE 'path',
+    REGION 'us-east-1'
+);
