@@ -366,7 +366,6 @@ LIMIT 10
 // Directors and their genres
 MATCH (p:Person)-[:DIRECTED]->(m:Movie)-[:IN_GENRE]->(g:Genre)
 RETURN p.name, collect(DISTINCT g.name) AS genres
-ORDER BY size(collect(DISTINCT g.name)) DESC
 ```
 
 #### Exploring DuckDB directly
