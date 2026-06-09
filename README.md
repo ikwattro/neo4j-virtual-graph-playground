@@ -167,6 +167,123 @@ WAL logical replication is enabled (`wal_level=logical`) to support future CDC u
 
 The image ships pre-populated with the full [Sakila dataset](https://github.com/sakiladb/postgres) — no `init.sql` needed. The graph model covers the complete rental domain:
 
+```mermaid
+erDiagram
+    ACTOR {
+        int actor_id PK
+        string first_name
+        string last_name
+    }
+    FILM {
+        int film_id PK
+        string title
+        string description
+        int release_year
+        int language_id FK
+        int rental_duration
+        decimal rental_rate
+        int length
+        decimal replacement_cost
+        string rating
+    }
+    CATEGORY {
+        int category_id PK
+        string name
+    }
+    LANGUAGE {
+        int language_id PK
+        string name
+    }
+    FILM_ACTOR {
+        int actor_id FK
+        int film_id FK
+    }
+    FILM_CATEGORY {
+        int film_id FK
+        int category_id FK
+    }
+    CUSTOMER {
+        int customer_id PK
+        int store_id FK
+        string first_name
+        string last_name
+        string email
+        int address_id FK
+    }
+    STORE {
+        int store_id PK
+        int manager_staff_id FK
+        int address_id FK
+    }
+    STAFF {
+        int staff_id PK
+        string first_name
+        string last_name
+        int store_id FK
+        int address_id FK
+        string username
+    }
+    INVENTORY {
+        int inventory_id PK
+        int film_id FK
+        int store_id FK
+    }
+    RENTAL {
+        int rental_id PK
+        timestamp rental_date
+        int inventory_id FK
+        int customer_id FK
+        timestamp return_date
+        int staff_id FK
+    }
+    PAYMENT {
+        int payment_id PK
+        int customer_id FK
+        int staff_id FK
+        int rental_id FK
+        decimal amount
+        timestamp payment_date
+    }
+    ADDRESS {
+        int address_id PK
+        string address
+        string district
+        int city_id FK
+        string postal_code
+        string phone
+    }
+    CITY {
+        int city_id PK
+        string city
+        int country_id FK
+    }
+    COUNTRY {
+        int country_id PK
+        string country
+    }
+
+    ACTOR      ||--o{ FILM_ACTOR     : "acts in"
+    FILM       ||--o{ FILM_ACTOR     : "features"
+    FILM       ||--o{ FILM_CATEGORY  : "belongs to"
+    CATEGORY   ||--o{ FILM_CATEGORY  : "categorizes"
+    LANGUAGE   ||--o{ FILM           : "dubbed in"
+    FILM       ||--o{ INVENTORY      : "stocked as"
+    STORE      ||--o{ INVENTORY      : "holds"
+    INVENTORY  ||--o{ RENTAL         : "rented via"
+    CUSTOMER   ||--o{ RENTAL         : "makes"
+    STAFF      ||--o{ RENTAL         : "processes"
+    CUSTOMER   ||--o{ PAYMENT        : "pays"
+    STAFF      ||--o{ PAYMENT        : "collects"
+    RENTAL     ||--o{ PAYMENT        : "settled by"
+    ADDRESS    ||--o{ CUSTOMER       : "address of"
+    ADDRESS    ||--o{ STAFF          : "address of"
+    ADDRESS    ||--o{ STORE          : "location of"
+    CITY       ||--o{ ADDRESS        : "contains"
+    COUNTRY    ||--o{ CITY           : "contains"
+    STAFF      ||--o{ STORE          : "manages"
+    STORE      ||--o{ CUSTOMER       : "serves"
+```
+
 | Node | Source table |
 |------|-------------|
 | `Actor`, `Film`, `Category`, `Language` | `actor`, `film`, `category`, `language` |
