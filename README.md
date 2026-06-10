@@ -26,6 +26,29 @@ Neo4j Virtual Graphs reads a small set of JSON configuration files (`datasource.
 - A valid **Neo4j Enterprise** license — the image used is `neo4j:2026.05.0-enterprise` and will not start without accepting the license agreement (already set in the compose file via `NEO4J_ACCEPT_LICENSE_AGREEMENT=yes`)
 - For Oracle: the `gvenzl/oracle-free:23-slim` image takes 60–120 seconds to initialize on first run
 - For LakeGraph: the DuckDB JDBC driver must be downloaded manually (see below)
+- **SSL certificates** — required for features such as remote aliases (see below)
+
+---
+
+## SSL Certificates
+
+Some Neo4j features (e.g. remote aliases) require TLS to be configured. The compose file expects self-signed certificates at `ssl/bolt/` and `ssl/https/`. These are excluded from the repository — generate them once before starting the stack:
+
+```bash
+mkdir -p ssl/bolt/trusted ssl/https/trusted
+
+openssl req -x509 -newkey rsa:4096 \
+  -keyout ssl/bolt/private.key \
+  -out ssl/bolt/public.crt \
+  -days 3650 -nodes \
+  -subj "/CN=neo4j" \
+  -addext "subjectAltName=DNS:localhost,DNS:neo4j,IP:127.0.0.1"
+
+cp ssl/bolt/private.key ssl/https/private.key
+cp ssl/bolt/public.crt  ssl/https/public.crt
+```
+
+The generated files are git-ignored. You only need to do this once per clone.
 
 ---
 

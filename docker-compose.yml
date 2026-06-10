@@ -2,11 +2,29 @@ services:
   neo4j:
     image: neo4j:2026.05.0-enterprise
     ports:
-      - 7474:7474
-      - 7687:7687
+      - 17474:7474
+      - 17473:7473
+      - 17687:7687
     environment:
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
       - NEO4J_AUTH=neo4j/hellopassword
+      # SSL - bolt
+      - NEO4J_dbms_ssl_policy_bolt_enabled=true
+      - NEO4J_dbms_ssl_policy_bolt_base__directory=/var/lib/neo4j/certificates/bolt
+      - NEO4J_dbms_ssl_policy_bolt_private__key=private.key
+      - NEO4J_dbms_ssl_policy_bolt_public__certificate=public.crt
+      - NEO4J_dbms_ssl_policy_bolt_client__auth=NONE
+      - NEO4J_dbms_connector_bolt_tls__level=OPTIONAL
+      # SSL - https
+      - NEO4J_dbms_ssl_policy_https_enabled=true
+      - NEO4J_dbms_ssl_policy_https_base__directory=/var/lib/neo4j/certificates/https
+      - NEO4J_dbms_ssl_policy_https_private__key=private.key
+      - NEO4J_dbms_ssl_policy_https_public__certificate=public.crt
+      - NEO4J_dbms_ssl_policy_https_client__auth=NONE
+      - NEO4J_dbms_connector_https_enabled=true
       # Virtual Graphs
-      - NEO4J_internal_virtual__graph_enabled=true
-      - NEO4J_internal_virtual__graph_home=/nvg_home
+      # - NEO4J_internal_virtual__graph_enabled=true
+      # - NEO4J_internal_virtual__graph_home=/nvg_home
+    volumes:
+      - ./ssl/bolt:/var/lib/neo4j/certificates/bolt
+      - ./ssl/https:/var/lib/neo4j/certificates/https
