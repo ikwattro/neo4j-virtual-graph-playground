@@ -11,6 +11,7 @@ The repository ships with five pre-configured backends split into two tiers:
 | **Intermediate** | [Sakila](#sakila) | More complex relational schema — DVD rental store |
 | **Advanced** | [LakeGraph](#lakegraph) | CSV files in MinIO, materialized by DuckDB on startup |
 | **Advanced** | [IceGraph](#icegraph) | Pre-built Apache Iceberg tables (Parquet) in MinIO, queried via DuckDB |
+| **Exotic** | [Neo4jGraph](#neo4jgraph) | Remote Neo4j instance virtualised via Neo4j JDBC — Cypher → cypher2sql → sql2cypher |
 
 ---
 
@@ -25,7 +26,7 @@ Neo4j Virtual Graphs reads a small set of JSON configuration files (`datasource.
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose plugin)
 - A valid **Neo4j Enterprise** license — the image used is `neo4j:2026.05.0-enterprise` and will not start without accepting the license agreement (already set in the compose file via `NEO4J_ACCEPT_LICENSE_AGREEMENT=yes`)
 - For Oracle: the `gvenzl/oracle-free:23-slim` image takes 60–120 seconds to initialize on first run
-- For LakeGraph: the DuckDB JDBC driver must be downloaded manually (see below)
+- For LakeGraph / IceGraph: the DuckDB JDBC driver must be downloaded manually (see below) — all other JDBC drivers (PostgreSQL, Oracle, Neo4j) are committed to the repository
 - **SSL certificates** — required for features such as remote aliases; self-signed demo certs are included in the repository (see [SSL Certificates](#ssl-certificates))
 
 ---
@@ -447,6 +448,57 @@ rm -f config/icegraph/warehouse/iceberg_catalog.db
 
 ---
 
+### Neo4jGraph
+
+**The most exotic backend.** Neo4jGraph virtualises a *remote Neo4j database* through Neo4j Virtual Graphs using the **Neo4j JDBC driver** and its built-in `sql2cypher` translation layer. The result is a delightfully recursive query pipeline:
+
+```
+You write Cypher
+    ↓  NVG translates to SQL  (cypher2sql)
+Neo4j JDBC driver receives SQL
+    ↓  driver translates back to Cypher  (sql2cypher)
+Remote Neo4j instance executes native Cypher
+    ↓  results flow back up the chain
+You see a graph
+```
+
+In other words: **Cypher → cypher2sql → sql2cypher → Cypher**. The intermediate SQL hop is entirely transparent — you write and read Cypher all the way through.
+
+The "remote" Neo4j (`neo4j2`) is a second Neo4j instance running in the same Compose stack. It is seeded automatically on startup with the classic movies dataset using [neo4j-config-cli](https://github.com/graphaware/neo4j-config-cli).
+
+#### Startup sequence
+
+1. **neo4j2** starts and passes its healthcheck (cypher-shell probe)
+2. **neo4j-config-cli** connects to `neo4j2`, applies seed Cypher, then exits
+3. **neo4j** (the Virtual Graphs instance) waits for `neo4j-config-cli` to complete successfully, then boots
+
+| Property | Value |
+|----------|-------|
+| Compose file | `docker-compose-neo4j.yml` |
+| JDBC driver | `neo4j-jdbc-driver-6.13.0.jar` |
+| Remote Neo4j Bolt | `bolt://neo4j2:7687` |
+| Remote credentials | `neo4j` / `hellopassword` |
+| Seed tool | `graphaware/neo4j-config-cli:2.7.3` |
+
+#### Graph model
+
+The remote instance holds the standard movies graph seeded by `neo4j-config-cli`:
+
+```
+(Person)-[:ACTED_IN]->(Movie)
+```
+
+#### Sample queries
+
+```cypher
+MATCH path = (n:Person {name: "Keanu Reeves"})-[:ACTED_IN]->(m:Movie)
+RETURN path
+```
+
+> The Cypher above travels through two translation layers before any real data is touched — NVG renders it as SQL for the JDBC driver, which re-interprets that SQL as Cypher against `neo4j2`. Both hops are invisible to the query author.
+
+---
+
 ## Repository Structure
 
 ```
@@ -458,6 +510,7 @@ rm -f config/icegraph/warehouse/iceberg_catalog.db
 ├── docker-compose-sakila.yml                 # Advanced: Sakila overlay
 ├── docker-compose-lakegraph.yml              # Advanced: LakeGraph (MinIO + DuckDB)
 ├── docker-compose-icegraph.yml               # Advanced: IceGraph (Iceberg + MinIO + DuckDB)
+├── docker-compose-neo4j.yml                  # Advanced: Neo4jGraph (remote Neo4j via JDBC)
 └── config/
     ├── minio/                                # Shared CSV source files (movies dataset)
     │   ├── movies.csv
@@ -482,7 +535,7 @@ rm -f config/icegraph/warehouse/iceberg_catalog.db
     │   │   ├── duckdbrc                      # Auto-loaded S3 credentials for CLI sessions
     │   │   └── entrypoint.sh
     │   ├── jdbc/
-    │   │   └── duckdb_jdbc-1.5.3.0.jar       # Download manually (see setup above)
+    │   │   └── duckdb_jdbc-1.5.3.0.jar       # Not committed — download manually (see setup above)
     │   └── nvg-config/
     └── icegraph/
         ├── duckdb/

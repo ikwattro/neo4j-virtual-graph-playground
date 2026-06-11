@@ -6,10 +6,8 @@
 .vscode/
 *.swp
 
-# JDBC drivers — download manually, do not commit binaries
+# DuckDB JDBC driver — too large to commit, download manually (see LakeGraph/IceGraph setup)
 config/lakegraph/jdbc/*.jar
-config/postgres/jdbc/*.jar
-config/oracle/jdbc/*.jar
 
 # PyIceberg local catalog tracker — generated during warehouse creation, not needed at runtime
 iceberg_catalog.db

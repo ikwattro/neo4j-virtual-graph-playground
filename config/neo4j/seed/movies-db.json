@@ -1,0 +1,27 @@
+{
+    "kind": "Database",
+    "name": "movies",
+    "dropIfExists": true,
+    "skipCreate": false,
+    "indexes": {
+      "nodes" : [
+        {
+          "labels": ["Movie"],
+          "properties": ["title", "tagline"],
+          "name": "Movie",
+          "type": "FULLTEXT"
+        },
+        {
+          "labels": ["Person"],
+          "properties": ["name"],
+          "name": "Person",
+          "type": "FULLTEXT"
+        }
+      ],
+      "relationships": []
+    },
+    "constraints": {
+      "nodes": []
+    },
+    "seeds": ["movies.cypher"]
+  }

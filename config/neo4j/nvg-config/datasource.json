@@ -1,4 +1,4 @@
 {
   "type" : "generic",
-  "url" : "jdbc:neo4j+ssc://neo4j-bumblebee-001.infra.graphaware.io:7687/movies?enableSQLTranslation=true"
+  "url" : "jdbc:neo4j://neo4j2:7687/movies?enableSQLTranslation=true"
 }
