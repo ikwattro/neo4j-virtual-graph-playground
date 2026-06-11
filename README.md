@@ -2,7 +2,7 @@
 
 A hands-on sandbox for exploring the **Neo4j Virtual Graphs** feature, which lets you query relational database tables as if they were a native graph — using Cypher, with no ETL required.
 
-The repository ships with five pre-configured backends split into two tiers:
+The repository ships with several pre-configured backends split into tiers:
 
 | Tier | Backend | What makes it interesting |
 |------|---------|--------------------------|
