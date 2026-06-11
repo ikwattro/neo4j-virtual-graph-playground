@@ -1,0 +1,15 @@
+services:
+  # neo4j2:
+  #   image: neo4j:2026.05.0-enterprise
+  #   ports:
+  #     - 7474:7474
+  #     - 7473:7473
+  #     - 7687:7687
+  #   environment:
+  #     - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+  #     - NEO4J_AUTH=neo4j/hellopassword
+  neo4j:
+    volumes:
+      - "./config/neo4j/jdbc/neo4j-jdbc-driver-6.13.0.jar:/var/lib/neo4j/lib/neo4j-jdbc-driver-6.13.0.jar"
+      - "./config/neo4j/nvg-config:/nvg_home"
+    
