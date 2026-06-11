@@ -1,0 +1,4 @@
+{
+  "type": "generic",
+  "url": "jdbc:singlestore://singlestore-vg:3306/nvg?sessionVariables=sql_mode=ANSI_QUOTES"
+}

@@ -1,0 +1,22 @@
+volumes:
+  nvg_singlestore_data:
+services:
+  singlestore-vg:
+    image: ghcr.io/singlestore-labs/singlestoredb-dev:latest
+    platform: linux/amd64
+    environment:
+      ROOT_PASSWORD: nvg
+      INIT_SQL: /init.sql
+    ports:
+      - "3306:3306"
+      - "8080:8080"
+    volumes:
+      - "nvg_singlestore_data:/var/lib/memsql"
+      - "./config/singlestore/initdb/init.sql:/init.sql"
+  neo4j:
+    depends_on:
+      singlestore-vg:
+        condition: service_healthy
+    volumes:
+      - "./config/singlestore/jdbc/singlestore-jdbc-client-1.1.3.jar:/var/lib/neo4j/lib/singlestore-jdbc-client-1.1.3.jar"
+      - "./config/singlestore/nvg-config:/nvg_home"

@@ -8,6 +8,7 @@ The repository ships with several pre-configured backends split into tiers:
 |------|---------|--------------------------|
 | **Simple** | [PostgreSQL](#simple-backends) | Single-service JDBC connection, classic movies graph |
 | **Simple** | [Oracle Free](#simple-backends) | Single-service JDBC connection, classic movies graph |
+| **Simple** | [SingleStore](#singlestore) | Single-service JDBC connection, classic movies graph — MySQL-compatible distributed SQL |
 | **Intermediate** | [Sakila](#sakila) | More complex relational schema — DVD rental store |
 | **Advanced** | [LakeGraph](#lakegraph) | CSV files in MinIO, materialized by DuckDB on startup |
 | **Advanced** | [IceGraph](#icegraph) | Pre-built Apache Iceberg tables (Parquet) in MinIO, queried via DuckDB |
@@ -64,6 +65,9 @@ Open `.env` and uncomment the line for the backend you want:
 # PinotGraph — Apache Pinot OLAP cluster (movies graph)
 # COMPOSE_FILE=docker-compose.yml:docker-compose-pinot.yml
 
+# SingleStore — MySQL-compatible distributed SQL (movies graph)
+# COMPOSE_FILE=docker-compose.yml:docker-compose-singlestore.yml
+
 # Neo4jGraph — remote Neo4j instance virtualised via Neo4j JDBC (movies graph)
 # COMPOSE_FILE=docker-compose.yml:docker-compose-neo4j.yml
 ```
@@ -119,6 +123,18 @@ WAL logical replication is enabled (`wal_level=logical`) to support future CDC u
 | JDBC URL | `jdbc:oracle:thin:@//oracle-vg:1521/FREEPDB1` |
 
 > Oracle's container takes 60–120 seconds to initialize on the first run. The healthcheck gates Neo4j startup automatically.
+
+### SingleStore
+
+[SingleStore](https://www.singlestore.com/) is a distributed SQL database with MySQL-compatible syntax optimized for real-time analytics. It uses columnar storage by default, making it well-suited for analytical queries over the movies graph.
+
+| Property | Value |
+|----------|-------|
+| Image | `ghcr.io/singlestore-labs/singlestoredb-dev:latest` |
+| Host port | `3306` (MySQL protocol), `8080` (Studio UI) |
+| Database | `nvg` |
+| User / Password | `root` / `nvg` |
+| JDBC URL | `jdbc:singlestore://singlestore-vg:3306/nvg` |
 
 **Sample queries:**
 
