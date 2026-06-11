@@ -63,6 +63,9 @@ Open `.env` and uncomment the line for the backend you want:
 
 # PinotGraph — Apache Pinot OLAP cluster (movies graph)
 # COMPOSE_FILE=docker-compose.yml:docker-compose-pinot.yml
+
+# Neo4jGraph — remote Neo4j instance virtualised via Neo4j JDBC (movies graph)
+# COMPOSE_FILE=docker-compose.yml:docker-compose-neo4j.yml
 ```
 
 ### 2. Start the stack
@@ -673,6 +676,12 @@ RETURN path
             ├── datasource.json               # type: duckdb, path to mounted .duckdb file
             ├── secret.json
             └── schema.json
+    ├── neo4j/
+    │   ├── jdbc/neo4j-jdbc-driver-6.13.0.jar    # Neo4j JDBC driver (committed)
+    │   ├── seed/
+    │   │   ├── movies.cypher                     # Cypher seed script for the remote neo4j2 instance
+    │   │   └── movies-db.json                    # neo4j-config-cli manifest
+    │   └── nvg-config/
     └── pinot/
         ├── build/pom.xml                     # Maven Shade POM — bundles pinot-jdbc-client fat jar
         ├── build-pinot-jdbc.sh               # One-time JDBC driver build script (Docker + Maven)
