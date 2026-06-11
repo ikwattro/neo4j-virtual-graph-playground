@@ -1,0 +1,13 @@
+{
+  "tableName": "movie_directors",
+  "tableType": "OFFLINE",
+  "segmentsConfig": {
+    "replication": "1",
+    "schemaName": "movie_directors"
+  },
+  "tenants": {},
+  "tableIndexConfig": {
+    "loadMode": "MMAP"
+  },
+  "metadata": {}
+}

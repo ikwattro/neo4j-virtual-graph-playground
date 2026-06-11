@@ -1,0 +1,7 @@
+{
+  "schemaName": "movie_directors",
+  "dimensionFieldSpecs": [
+    {"name": "movie_id",   "dataType": "INT"},
+    {"name": "person_id",  "dataType": "INT"}
+  ]
+}

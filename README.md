@@ -11,6 +11,7 @@ The repository ships with several pre-configured backends split into tiers:
 | **Intermediate** | [Sakila](#sakila) | More complex relational schema — DVD rental store |
 | **Advanced** | [LakeGraph](#lakegraph) | CSV files in MinIO, materialized by DuckDB on startup |
 | **Advanced** | [IceGraph](#icegraph) | Pre-built Apache Iceberg tables (Parquet) in MinIO, queried via DuckDB |
+| **Advanced** | [PinotGraph](#pinotgraph) | Apache Pinot OLAP cluster — real-time analytics store with multi-stage SQL engine |
 | **Exotic** | [Neo4jGraph](#neo4jgraph) | Remote Neo4j instance virtualised via Neo4j JDBC — Cypher → cypher2sql → sql2cypher |
 
 ---
@@ -27,6 +28,7 @@ Neo4j Virtual Graphs reads a small set of JSON configuration files (`datasource.
 - A valid **Neo4j Enterprise** license — the image used is `neo4j:2026.05.0-enterprise` and will not start without accepting the license agreement (already set in the compose file via `NEO4J_ACCEPT_LICENSE_AGREEMENT=yes`)
 - For Oracle: the `gvenzl/oracle-free:23-slim` image takes 60–120 seconds to initialize on first run
 - For LakeGraph / IceGraph: the DuckDB JDBC driver must be downloaded manually (see below) — all other JDBC drivers (PostgreSQL, Oracle, Neo4j) are committed to the repository
+- For PinotGraph: the Pinot JDBC fat jar must be built once using the included script (requires Docker — no local Maven or Java needed)
 - **SSL certificates** — required for features such as remote aliases; self-signed demo certs are included in the repository (see [SSL Certificates](#ssl-certificates))
 
 ---
@@ -58,6 +60,9 @@ Open `.env` and uncomment the line for the backend you want:
 
 # IceGraph — Apache Iceberg tables in MinIO, queried via DuckDB (movies graph)
 # COMPOSE_FILE=docker-compose.yml:docker-compose-icegraph.yml
+
+# PinotGraph — Apache Pinot OLAP cluster (movies graph)
+# COMPOSE_FILE=docker-compose.yml:docker-compose-pinot.yml
 ```
 
 ### 2. Start the stack
@@ -448,6 +453,118 @@ rm -f config/icegraph/warehouse/iceberg_catalog.db
 
 ---
 
+### PinotGraph
+
+**A real-time OLAP backend.** PinotGraph virtualises an **Apache Pinot** cluster — a distributed, columnar analytics store used at LinkedIn, Uber, and others. Pinot speaks SQL but requires its **multi-stage query engine** (MSE, based on Apache Calcite) for JOINs and CTEs, both of which Neo4j Virtual Graphs generates. MSE is enabled automatically in this setup.
+
+```
+CSV files (shared from config/minio/)
+    ↓  ingested at startup via Pinot batch ingestion (LaunchDataIngestionJob)
+Apache Pinot cluster (ZooKeeper + Controller + Broker + Server)
+    ↓  queried via Pinot JDBC driver with useMultistageEngine=true
+Neo4j Virtual Graphs
+    ↓  queried with Cypher
+You
+```
+
+#### Setup
+
+**1. Build the Pinot JDBC fat jar** (one-time, requires Docker):
+
+The Pinot JDBC client has many transitive dependencies that are not bundled in the Maven artifact. The build script uses a Maven container to assemble them into a single self-contained jar. Maven dependencies (~300 MB) are downloaded on the first run and cached in a named Docker volume for subsequent runs.
+
+```bash
+cd config/pinot
+./build-pinot-jdbc.sh
+```
+
+This places `pinot-jdbc-client-1.3.0.jar` in `config/pinot/jdbc/`.
+
+**2. Activate the backend in `.env`:**
+
+```dotenv
+COMPOSE_FILE=docker-compose.yml:docker-compose-pinot.yml
+```
+
+**3. Start the stack:**
+
+```bash
+docker compose up -d
+```
+
+#### Startup sequence
+
+1. **ZooKeeper** starts and passes its healthcheck
+2. **Pinot Controller** registers with ZooKeeper and becomes healthy
+3. **Pinot Broker** registers with the cluster and becomes healthy
+4. **Pinot Server** joins the cluster and becomes healthy
+5. **pinot-init** enables MSE cluster-wide, creates 6 schemas and 6 OFFLINE tables, then ingests data from the shared CSV files — exits 0 when done
+6. **Neo4j** waits for `pinot-init` to complete successfully, then boots with the JDBC driver mounted
+
+On subsequent `docker compose up`, `pinot-init` detects existing segments and exits immediately — no duplicate schema/table creation errors.
+
+#### Services
+
+| Service | Port | Notes |
+|---------|------|-------|
+| Pinot Controller + Query Console | `9000` | Web UI, REST API, ad-hoc SQL |
+| Pinot Broker | `8099` | JDBC query endpoint |
+| Neo4j Browser | `7474` | As usual |
+
+#### Graph model
+
+```
+(Person)-[:DIRECTED]->(Movie)
+(Person)-[:ACTED_IN {character}]->(Movie)
+(Movie)-[:IN_GENRE]->(Genre)
+```
+
+| Node | Source table | Key properties |
+|------|-------------|----------------|
+| `Movie` | `movies` | `title`, `release_year`, `runtime_minutes`, `budget_usd`, `revenue_usd` |
+| `Person` | `people` | `name`, `birth_year`, `nationality` |
+| `Genre` | `genres` | `name` |
+
+| Relationship | Source table | Notes |
+|---|---|---|
+| `ACTED_IN` | `movie_actors` | derived from `movie_crew WHERE role = 'Actor'`; has `character` property |
+| `DIRECTED` | `movie_directors` | derived from `movie_crew WHERE role = 'Director'` |
+| `IN_GENRE` | `movie_genres` | junction table |
+
+#### Sample queries
+
+```cypher
+MATCH (p:Person)-[:ACTED_IN]->(m:Movie)
+RETURN p.name, m.title LIMIT 10
+
+MATCH path = (p:Person)-[:ACTED_IN]->(m:Movie)-[:IN_GENRE]->(g:Genre)
+RETURN path LIMIT 25
+
+MATCH (p:Person)-[:DIRECTED]->(m:Movie)-[:IN_GENRE]->(g:Genre)
+RETURN p.name AS director, collect(DISTINCT g.name) AS genres
+ORDER BY director
+```
+
+#### Exploring Pinot directly
+
+The Pinot Query Console is available at `http://localhost:9000`. Run SQL there to inspect table contents independently of Neo4j:
+
+```sql
+SELECT title, release_year FROM movies ORDER BY release_year DESC LIMIT 5;
+SELECT p.name, COUNT(*) AS films
+FROM people p JOIN movie_actors ma ON p.person_id = ma.person_id
+GROUP BY p.name ORDER BY films DESC;
+```
+
+#### Technical notes
+
+- The JDBC URL uses `useMultistageEngine=true` (lowercase `s` in `stage`) — the exact string of `QueryOptionKey.USE_MULTISTAGE_ENGINE` in Pinot's source. `useMultiStageEngine` (capital `S`) is silently ignored by the driver.
+- MSE is also set cluster-wide via `POST /cluster/configs` on startup so it persists across Neo4j reconnects.
+- Tables are `OFFLINE` type — static batch data, no real-time ingestion.
+- The broker config (`config/pinot/broker.conf`) passes `pinot.broker.enableMultiStagePipeline=true` as a belt-and-suspenders fallback.
+
+---
+
 ### Neo4jGraph
 
 **The most exotic backend.** Neo4jGraph virtualises a *remote Neo4j database* through Neo4j Virtual Graphs using the **Neo4j JDBC driver** and its built-in `sql2cypher` translation layer. The result is a delightfully recursive query pipeline:
@@ -510,7 +627,8 @@ RETURN path
 ├── docker-compose-sakila.yml                 # Advanced: Sakila overlay
 ├── docker-compose-lakegraph.yml              # Advanced: LakeGraph (MinIO + DuckDB)
 ├── docker-compose-icegraph.yml               # Advanced: IceGraph (Iceberg + MinIO + DuckDB)
-├── docker-compose-neo4j.yml                  # Advanced: Neo4jGraph (remote Neo4j via JDBC)
+├── docker-compose-pinot.yml                  # Advanced: PinotGraph (Apache Pinot OLAP cluster)
+├── docker-compose-neo4j.yml                  # Exotic: Neo4jGraph (remote Neo4j via JDBC)
 └── config/
     ├── minio/                                # Shared CSV source files (movies dataset)
     │   ├── movies.csv
@@ -554,6 +672,19 @@ RETURN path
         └── nvg-config/
             ├── datasource.json               # type: duckdb, path to mounted .duckdb file
             ├── secret.json
+            └── schema.json
+    └── pinot/
+        ├── build/pom.xml                     # Maven Shade POM — bundles pinot-jdbc-client fat jar
+        ├── build-pinot-jdbc.sh               # One-time JDBC driver build script (Docker + Maven)
+        ├── broker.conf                       # Broker config: enableMultiStagePipeline=true
+        ├── schemas/                          # 6 Pinot field schema JSON files
+        ├── tables/                           # 6 OFFLINE table config JSON files
+        ├── ingestion/                        # 6 batch ingestion job specs
+        ├── init/init.sh                      # Bootstrap: MSE → schemas → tables → ingest (idempotent)
+        ├── jdbc/                             # JDBC driver (not committed — run build-pinot-jdbc.sh)
+        └── nvg-config/
+            ├── datasource.json               # jdbc:pinot://pinot-controller:9000?useMultistageEngine=true
+            ├── secret.json                   # anonymous auth
             └── schema.json
 ```
 
@@ -644,3 +775,4 @@ docker compose down -v
 | Sakila (PostgreSQL) | `sakila` | `p_ssW0rd` |
 | MinIO (LakeGraph) | `minio` | `hellopassword` |
 | MinIO (IceGraph) | `minio` | `hellopassword` |
+| Pinot Controller / Broker | — | no authentication |

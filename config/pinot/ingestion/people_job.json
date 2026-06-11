@@ -1,0 +1,38 @@
+{
+  "executionFrameworkSpec": {
+    "name": "standalone",
+    "segmentGenerationJobRunnerClassName": "org.apache.pinot.plugin.ingestion.batch.standalone.SegmentGenerationJobRunner",
+    "segmentTarPushJobRunnerClassName": "org.apache.pinot.plugin.ingestion.batch.standalone.SegmentTarPushJobRunner",
+    "segmentUriPushJobRunnerClassName": "org.apache.pinot.plugin.ingestion.batch.standalone.SegmentUriPushJobRunner"
+  },
+  "jobType": "SegmentCreationAndTarPush",
+  "inputDirURI": "file:///csv/",
+  "includeFileNamePattern": "glob:**/people.csv",
+  "outputDirURI": "file:///tmp/segments/people/",
+  "overwriteOutput": true,
+  "pinotFSSpecs": [
+    {
+      "scheme": "file",
+      "className": "org.apache.pinot.spi.filesystem.LocalPinotFS"
+    }
+  ],
+  "recordReaderSpec": {
+    "dataFormat": "csv",
+    "className": "org.apache.pinot.plugin.inputformat.csv.CSVRecordReader",
+    "configClassName": "org.apache.pinot.plugin.inputformat.csv.CSVRecordReaderConfig"
+  },
+  "tableSpec": {
+    "tableName": "people",
+    "schemaURI": "http://pinot-controller:9000/schemas/people",
+    "tableConfigURI": "http://pinot-controller:9000/tables/people"
+  },
+  "pinotClusterSpecs": [
+    {
+      "controllerURI": "http://pinot-controller:9000"
+    }
+  ],
+  "pushJobSpec": {
+    "pushAttempts": 2,
+    "pushRetryIntervalMillis": 1000
+  }
+}

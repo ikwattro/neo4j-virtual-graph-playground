@@ -1,0 +1,4 @@
+{
+  "type": "generic",
+  "url": "jdbc:pinot://pinot-controller:9000?brokers=pinot-broker:8099&useMultistageEngine=true"
+}

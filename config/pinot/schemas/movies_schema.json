@@ -1,0 +1,13 @@
+{
+  "schemaName": "movies",
+  "dimensionFieldSpecs": [
+    {"name": "movie_id",         "dataType": "INT"},
+    {"name": "title",            "dataType": "STRING"},
+    {"name": "release_year",     "dataType": "INT"},
+    {"name": "runtime_minutes",  "dataType": "INT"},
+    {"name": "budget_usd",       "dataType": "LONG"},
+    {"name": "revenue_usd",      "dataType": "LONG"},
+    {"name": "language",         "dataType": "STRING"},
+    {"name": "overview",         "dataType": "STRING"}
+  ]
+}

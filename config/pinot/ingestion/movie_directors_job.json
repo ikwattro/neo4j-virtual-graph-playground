@@ -1,0 +1,38 @@
+{
+  "executionFrameworkSpec": {
+    "name": "standalone",
+    "segmentGenerationJobRunnerClassName": "org.apache.pinot.plugin.ingestion.batch.standalone.SegmentGenerationJobRunner",
+    "segmentTarPushJobRunnerClassName": "org.apache.pinot.plugin.ingestion.batch.standalone.SegmentTarPushJobRunner",
+    "segmentUriPushJobRunnerClassName": "org.apache.pinot.plugin.ingestion.batch.standalone.SegmentUriPushJobRunner"
+  },
+  "jobType": "SegmentCreationAndTarPush",
+  "inputDirURI": "file:///tmp/derived/",
+  "includeFileNamePattern": "glob:**/movie_directors.csv",
+  "outputDirURI": "file:///tmp/segments/movie_directors/",
+  "overwriteOutput": true,
+  "pinotFSSpecs": [
+    {
+      "scheme": "file",
+      "className": "org.apache.pinot.spi.filesystem.LocalPinotFS"
+    }
+  ],
+  "recordReaderSpec": {
+    "dataFormat": "csv",
+    "className": "org.apache.pinot.plugin.inputformat.csv.CSVRecordReader",
+    "configClassName": "org.apache.pinot.plugin.inputformat.csv.CSVRecordReaderConfig"
+  },
+  "tableSpec": {
+    "tableName": "movie_directors",
+    "schemaURI": "http://pinot-controller:9000/schemas/movie_directors",
+    "tableConfigURI": "http://pinot-controller:9000/tables/movie_directors"
+  },
+  "pinotClusterSpecs": [
+    {
+      "controllerURI": "http://pinot-controller:9000"
+    }
+  ],
+  "pushJobSpec": {
+    "pushAttempts": 2,
+    "pushRetryIntervalMillis": 1000
+  }
+}

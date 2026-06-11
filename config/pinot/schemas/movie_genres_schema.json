@@ -1,0 +1,7 @@
+{
+  "schemaName": "movie_genres",
+  "dimensionFieldSpecs": [
+    {"name": "movie_id",  "dataType": "INT"},
+    {"name": "genre_id",  "dataType": "INT"}
+  ]
+}

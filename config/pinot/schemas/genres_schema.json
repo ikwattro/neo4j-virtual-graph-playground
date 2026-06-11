@@ -1,0 +1,7 @@
+{
+  "schemaName": "genres",
+  "dimensionFieldSpecs": [
+    {"name": "genre_id",  "dataType": "INT"},
+    {"name": "name",      "dataType": "STRING"}
+  ]
+}

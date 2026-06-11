@@ -9,6 +9,10 @@
 # DuckDB JDBC driver — too large to commit, download manually (see LakeGraph/IceGraph setup)
 config/lakegraph/jdbc/*.jar
 
+# Pinot JDBC fat jar and Maven build output — built locally via build-pinot-jdbc.sh
+config/pinot/jdbc/*.jar
+config/pinot/build/target/
+
 # PyIceberg local catalog tracker — generated during warehouse creation, not needed at runtime
 iceberg_catalog.db
 

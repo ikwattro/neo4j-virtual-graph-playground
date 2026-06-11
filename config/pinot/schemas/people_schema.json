@@ -1,0 +1,10 @@
+{
+  "schemaName": "people",
+  "dimensionFieldSpecs": [
+    {"name": "person_id",    "dataType": "INT"},
+    {"name": "name",         "dataType": "STRING"},
+    {"name": "birth_year",   "dataType": "INT"},
+    {"name": "nationality",  "dataType": "STRING"},
+    {"name": "known_for_role", "dataType": "STRING"}
+  ]
+}

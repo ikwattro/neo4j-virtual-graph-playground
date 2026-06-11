@@ -1,0 +1,85 @@
+{
+  "catalog": "",
+  "schema": "default",
+  "entities": {
+    "nodes": [
+      {
+        "label": "Movie",
+        "table": "movies",
+        "properties": [
+          {"name": "title",            "column": "TITLE",            "type": "STRING"},
+          {"name": "release_year",     "column": "RELEASE_YEAR",     "type": "INTEGER"},
+          {"name": "runtime_minutes",  "column": "RUNTIME_MINUTES",  "type": "INTEGER"},
+          {"name": "budget_usd",       "column": "BUDGET_USD",       "type": "INTEGER"},
+          {"name": "revenue_usd",      "column": "REVENUE_USD",      "type": "INTEGER"},
+          {"name": "language",         "column": "LANGUAGE",         "type": "STRING"}
+        ],
+        "key": [{"column": "MOVIE_ID"}]
+      },
+      {
+        "label": "Person",
+        "table": "people",
+        "properties": [
+          {"name": "name",        "column": "NAME",        "type": "STRING"},
+          {"name": "birth_year",  "column": "BIRTH_YEAR",  "type": "INTEGER"},
+          {"name": "nationality", "column": "NATIONALITY", "type": "STRING"}
+        ],
+        "key": [{"column": "PERSON_ID"}]
+      },
+      {
+        "label": "Genre",
+        "table": "genres",
+        "properties": [
+          {"name": "name", "column": "NAME", "type": "STRING"}
+        ],
+        "key": [{"column": "GENRE_ID"}]
+      }
+    ],
+    "relationships": [
+      {
+        "label": "ACTED_IN",
+        "table": "movie_actors",
+        "start": {
+          "targetEntity": "Person",
+          "keys": [{"nodeColumn": "PERSON_ID", "relationshipColumn": "PERSON_ID"}]
+        },
+        "end": {
+          "targetEntity": "Movie",
+          "keys": [{"nodeColumn": "MOVIE_ID", "relationshipColumn": "MOVIE_ID"}]
+        },
+        "properties": [
+          {"name": "character", "column": "CHARACTER_NAME", "type": "STRING"}
+        ],
+        "key": [{"column": "PERSON_ID"}, {"column": "MOVIE_ID"}]
+      },
+      {
+        "label": "DIRECTED",
+        "table": "movie_directors",
+        "start": {
+          "targetEntity": "Person",
+          "keys": [{"nodeColumn": "PERSON_ID", "relationshipColumn": "PERSON_ID"}]
+        },
+        "end": {
+          "targetEntity": "Movie",
+          "keys": [{"nodeColumn": "MOVIE_ID", "relationshipColumn": "MOVIE_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "PERSON_ID"}, {"column": "MOVIE_ID"}]
+      },
+      {
+        "label": "IN_GENRE",
+        "table": "movie_genres",
+        "start": {
+          "targetEntity": "Movie",
+          "keys": [{"nodeColumn": "MOVIE_ID", "relationshipColumn": "MOVIE_ID"}]
+        },
+        "end": {
+          "targetEntity": "Genre",
+          "keys": [{"nodeColumn": "GENRE_ID", "relationshipColumn": "GENRE_ID"}]
+        },
+        "properties": [],
+        "key": [{"column": "MOVIE_ID"}, {"column": "GENRE_ID"}]
+      }
+    ]
+  }
+}
