@@ -1,0 +1,4 @@
+{
+  "type" : "generic",
+  "url" : "jdbc:postgresql://postgres-workspaces:5432/workspaces"
+}

@@ -1,0 +1,175 @@
+{
+  "catalog": "workspaces",
+  "schema": "public",
+  "entities": {
+    "nodes": [
+      {
+        "label": "Person",
+        "table": "ws_techco_nodes_person",
+        "properties": [
+          { "name": "firstName", "column": "firstname", "type": "STRING" },
+          { "name": "lastName",  "column": "lastname",  "type": "STRING" },
+          { "name": "title",     "column": "title",     "type": "STRING" }
+        ],
+        "key": [
+          { "column": "record_id" }
+        ]
+      },
+      {
+        "label": "Company",
+        "table": "ws_techco_nodes_company",
+        "properties": [
+          { "name": "name",     "column": "name",     "type": "STRING" },
+          { "name": "industry", "column": "industry", "type": "STRING" },
+          { "name": "size",     "column": "size",     "type": "STRING" }
+        ],
+        "key": [
+          { "column": "record_id" }
+        ]
+      },
+      {
+        "label": "Team",
+        "table": "ws_techco_nodes_team",
+        "properties": [
+          { "name": "name",  "column": "name",  "type": "STRING" },
+          { "name": "focus", "column": "focus", "type": "STRING" }
+        ],
+        "key": [
+          { "column": "record_id" }
+        ]
+      },
+      {
+        "label": "Skill",
+        "table": "ws_techco_nodes_skill",
+        "properties": [
+          { "name": "name", "column": "name", "type": "STRING" }
+        ],
+        "key": [
+          { "column": "record_id" }
+        ]
+      },
+      {
+        "label": "Project",
+        "table": "ws_techco_nodes_project",
+        "properties": [
+          { "name": "name",     "column": "name",     "type": "STRING" },
+          { "name": "status",   "column": "status",   "type": "STRING" },
+          { "name": "priority", "column": "priority", "type": "STRING" }
+        ],
+        "key": [
+          { "column": "record_id" }
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "label": "WORKS_AT",
+        "table": "ws_techco_edges_works_at",
+        "start": {
+          "targetEntity": "Person",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_from" } ]
+        },
+        "end": {
+          "targetEntity": "Company",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_to" } ]
+        },
+        "properties": [
+          { "name": "since", "column": "since", "type": "INTEGER" }
+        ],
+        "key": [ { "column": "record_id" } ]
+      },
+      {
+        "label": "MEMBER_OF",
+        "table": "ws_techco_edges_member_of",
+        "start": {
+          "targetEntity": "Person",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_from" } ]
+        },
+        "end": {
+          "targetEntity": "Team",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_to" } ]
+        },
+        "properties": [
+          { "name": "role", "column": "role", "type": "STRING" }
+        ],
+        "key": [ { "column": "record_id" } ]
+      },
+      {
+        "label": "HAS_SKILL",
+        "table": "ws_techco_edges_has_skill",
+        "start": {
+          "targetEntity": "Person",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_from" } ]
+        },
+        "end": {
+          "targetEntity": "Skill",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_to" } ]
+        },
+        "properties": [
+          { "name": "level", "column": "level", "type": "STRING" }
+        ],
+        "key": [ { "column": "record_id" } ]
+      },
+      {
+        "label": "WORKS_ON",
+        "table": "ws_techco_edges_works_on",
+        "start": {
+          "targetEntity": "Person",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_from" } ]
+        },
+        "end": {
+          "targetEntity": "Project",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_to" } ]
+        },
+        "properties": [],
+        "key": [ { "column": "record_id" } ]
+      },
+      {
+        "label": "MANAGES",
+        "table": "ws_techco_edges_manages",
+        "start": {
+          "targetEntity": "Person",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_from" } ]
+        },
+        "end": {
+          "targetEntity": "Project",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_to" } ]
+        },
+        "properties": [],
+        "key": [ { "column": "record_id" } ]
+      },
+      {
+        "label": "PARTNER_OF",
+        "table": "ws_techco_edges_partner_of",
+        "start": {
+          "targetEntity": "Company",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_from" } ]
+        },
+        "end": {
+          "targetEntity": "Company",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_to" } ]
+        },
+        "properties": [
+          { "name": "since", "column": "since", "type": "INTEGER" }
+        ],
+        "key": [ { "column": "record_id" } ]
+      },
+      {
+        "label": "CLIENT_OF",
+        "table": "ws_techco_edges_client_of",
+        "start": {
+          "targetEntity": "Company",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_from" } ]
+        },
+        "end": {
+          "targetEntity": "Company",
+          "keys": [ { "nodeColumn": "record_id", "relationshipColumn": "record_id_to" } ]
+        },
+        "properties": [
+          { "name": "since", "column": "since", "type": "INTEGER" }
+        ],
+        "key": [ { "column": "record_id" } ]
+      }
+    ]
+  }
+}
