@@ -42,9 +42,15 @@ Some Neo4j features (e.g. remote aliases) require TLS to be configured. The comp
 
 ## Quick Start
 
-### 1. Choose a backend
+### 1. Set up your environment file
 
-Open `.env` and uncomment the line for the backend you want:
+Copy the template to create your local `.env` (this file is git-ignored so your changes won't be committed):
+
+```bash
+cp .env.template .env
+```
+
+Then open `.env` and uncomment the line for the backend you want:
 
 ```dotenv
 # PostgreSQL (movies graph)
