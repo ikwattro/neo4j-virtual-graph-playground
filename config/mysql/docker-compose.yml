@@ -14,7 +14,7 @@ services:
       - "3388:3306"
     volumes:
       - "nvg_mysql_data:/var/lib/mysql"
-      - "./config/mysql/initdb:/docker-entrypoint-initdb.d"
+      - "./initdb:/docker-entrypoint-initdb.d"
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u nvg --password=nvg"]
       interval: 5s
@@ -27,5 +27,5 @@ services:
       mysql-vg:
         condition: service_healthy
     volumes:
-      - "./config/mysql/jdbc/mysql-connector-j-9.7.0.jar:/var/lib/neo4j/lib/mysql-connector-j-9.7.0.jar"
-      - "./config/mysql/nvg-config:/nvg_home"
+      - "./jdbc/mysql-connector-j-9.7.0.jar:/var/lib/neo4j/lib/mysql-connector-j-9.7.0.jar"
+      - "./nvg-config:/nvg_home"

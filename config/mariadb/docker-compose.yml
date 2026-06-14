@@ -14,7 +14,7 @@ services:
       - "3389:3306"
     volumes:
       - "nvg_mariadb_data:/var/lib/mysql"
-      - "./config/mariadb/initdb:/docker-entrypoint-initdb.d"
+      - "./initdb:/docker-entrypoint-initdb.d"
     healthcheck:
       test: ["CMD-SHELL", "mariadb-admin ping -h localhost -u nvg --password=nvg"]
       interval: 5s
@@ -27,5 +27,5 @@ services:
       mariadb-vg:
         condition: service_healthy
     volumes:
-      - "./config/mariadb/jdbc/mariadb-java-client-3.4.1.jar:/var/lib/neo4j/lib/mariadb-java-client-3.4.1.jar"
-      - "./config/mariadb/nvg-config:/nvg_home"
+      - "./jdbc/mariadb-java-client-3.4.1.jar:/var/lib/neo4j/lib/mariadb-java-client-3.4.1.jar"
+      - "./nvg-config:/nvg_home"

@@ -12,7 +12,7 @@ services:
       - "1433:1433"
     volumes:
       - "nvg_sqlserver_data:/var/opt/mssql"
-      - "./config/sqlserver/initdb:/initdb"
+      - "./initdb:/initdb"
     entrypoint:
       - /bin/bash
       - /initdb/entrypoint.sh
@@ -28,5 +28,5 @@ services:
       sqlserver-vg:
         condition: service_healthy
     volumes:
-      - "./config/sqlserver/jdbc/mssql-jdbc-12.8.1.jre11.jar:/var/lib/neo4j/lib/mssql-jdbc-12.8.1.jre11.jar"
-      - "./config/sqlserver/nvg-config:/nvg_home"
+      - "./jdbc/mssql-jdbc-12.8.1.jre11.jar:/var/lib/neo4j/lib/mssql-jdbc-12.8.1.jre11.jar"
+      - "./nvg-config:/nvg_home"

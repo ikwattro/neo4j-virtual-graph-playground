@@ -5,7 +5,7 @@ Docker Compose project that virtualizes relational databases as Neo4j graphs via
 ## Key facts
 
 - **No package.json / Node.js** — pure Docker Compose + JSON/SQL config
-- **Active backend** set in `.env` via `COMPOSE_FILE=docker-compose.yml:docker-compose-<name>.yml`
+- **Active backend** set in `.env` via `COMPOSE_FILE=docker-compose.yml:config/<name>/docker-compose.yml`
 - **Base file** `docker-compose.yml` runs Neo4j enterprise with virtual graphs enabled
 - **Config root** `config/<backend-name>/` — one directory per backend
 
@@ -15,17 +15,17 @@ Run `/add-backend` — the skill has all templates and dialect-specific patterns
 
 ## Existing backends
 
-| Name        | Type         | Compose file                     |
-|-------------|--------------|----------------------------------|
-| postgres    | Simple JDBC  | docker-compose-postgres.yml      |
-| oracle      | Simple JDBC  | docker-compose-oracle.yml        |
-| singlestore | Simple JDBC  | docker-compose-singlestore.yml   |
-| sakila      | Complex JDBC | docker-compose-sakila.yml        |
-| lakegraph   | CSV→DuckDB   | docker-compose-lakegraph.yml     |
-| icegraph    | Iceberg→DuckDB | docker-compose-icegraph.yml    |
-| pinot       | OLAP cluster | docker-compose-pinot.yml         |
-| neo4j       | Remote Neo4j | docker-compose-neo4j.yml         |
-| workspaces  | PG workspaces | docker-compose-workspaces.yml   |
+| Name        | Type           | Compose file                           |
+|-------------|----------------|----------------------------------------|
+| postgres    | Simple JDBC    | config/postgres/docker-compose.yml     |
+| oracle      | Simple JDBC    | config/oracle/docker-compose.yml       |
+| singlestore | Simple JDBC    | config/singlestore/docker-compose.yml  |
+| sakila      | Complex JDBC   | config/sakila/docker-compose.yml       |
+| lakegraph   | CSV→DuckDB     | config/lakegraph/docker-compose.yml    |
+| icegraph    | Iceberg→DuckDB | config/icegraph/docker-compose.yml     |
+| pinot       | OLAP cluster   | config/pinot/docker-compose.yml        |
+| neo4j       | Remote Neo4j   | config/neo4j/docker-compose.yml        |
+| workspaces  | PG workspaces  | config/workspaces/docker-compose.yml   |
 
 ## NVG config shape (3 files per backend)
 

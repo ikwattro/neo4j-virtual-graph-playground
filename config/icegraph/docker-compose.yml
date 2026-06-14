@@ -1,6 +1,6 @@
 volumes:
-  minio:
-  duckdb-data:
+  minio-icegraph:
+  duckdb-icegraph-data:
 
 services:
   minio:
@@ -9,7 +9,7 @@ services:
       - MINIO_ROOT_USER=minio
       - MINIO_ROOT_PASSWORD=hellopassword
     volumes:
-      - minio:/data
+      - minio-icegraph:/data
     ports:
       - 9000:9000
       - 9001:9001
@@ -27,31 +27,27 @@ services:
       minio:
         condition: service_healthy
     volumes:
-      - ./config/minio:/csv
+      - ./warehouse:/warehouse
     entrypoint: >
       /bin/sh -c "
       /usr/bin/mc alias set local http://minio:9000 minio hellopassword &&
-      /usr/bin/mc mb --ignore-existing local/movies-data &&
-      /usr/bin/mc cp /csv/movies.csv       local/movies-data/movies.csv &&
-      /usr/bin/mc cp /csv/genres.csv       local/movies-data/genres.csv &&
-      /usr/bin/mc cp /csv/movie_genres.csv local/movies-data/movie_genres.csv &&
-      /usr/bin/mc cp /csv/people.csv       local/movies-data/people.csv &&
-      /usr/bin/mc cp /csv/movie_crew.csv   local/movies-data/movie_crew.csv &&
-      echo 'Bucket movies-data populated.' &&
+      /usr/bin/mc mb --ignore-existing local/iceberg-data &&
+      /usr/bin/mc cp --recursive /warehouse/ local/iceberg-data/ &&
+      echo 'Iceberg warehouse uploaded to iceberg-data bucket.' &&
       exit 0;
       "
 
   duckdb:
     build:
-      context: ./config/lakegraph/duckdb
-    container_name: duckdb-playground
+      context: ./duckdb
+    container_name: duckdb-icegraph-playground
     depends_on:
       minio:
         condition: service_healthy
       minio-mc:
         condition: service_completed_successfully
     volumes:
-      - duckdb-data:/data
+      - duckdb-icegraph-data:/data
     healthcheck:
       test: ["CMD", "test", "-f", "/data/movies.duckdb"]
       interval: 5s
@@ -64,6 +60,6 @@ services:
       duckdb:
         condition: service_healthy
     volumes:
-      - "./config/lakegraph/jdbc/duckdb_jdbc-1.5.3.0.jar:/var/lib/neo4j/lib/duckdb_jdbc-1.5.3.0.jar"
-      - "./config/lakegraph/nvg-config:/nvg_home"
-      - "duckdb-data:/duckdb-data:ro"
+      - "../lakegraph/jdbc/duckdb_jdbc-1.5.3.0.jar:/var/lib/neo4j/lib/duckdb_jdbc-1.5.3.0.jar"
+      - "./nvg-config:/nvg_home"
+      - "duckdb-icegraph-data:/duckdb-data:ro"

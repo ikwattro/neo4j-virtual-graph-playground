@@ -23,12 +23,13 @@ If the user hasn't specified, ask for:
 
 ## Architecture in one paragraph
 
-Each backend is a Docker Compose **overlay file** (`docker-compose-<name>.yml`) that defines the database service and extends the base `neo4j` service with `depends_on`, the JDBC driver volume, and the nvg-config volume. The base `docker-compose.yml` runs Neo4j with virtual graphs enabled via `NEO4J_internal_virtual__graph_home=/nvg_home`. The active backend is selected in `.env` by setting `COMPOSE_FILE=docker-compose.yml:docker-compose-<name>.yml`. Configuration lives in `config/<name>/`.
+Each backend is a Docker Compose **overlay file** (`config/<name>/docker-compose.yml`) that defines the database service and extends the base `neo4j` service with `depends_on`, the JDBC driver volume, and the nvg-config volume. The base `docker-compose.yml` runs Neo4j with virtual graphs enabled via `NEO4J_internal_virtual__graph_home=/nvg_home`. The active backend is selected in `.env` by setting `COMPOSE_FILE=docker-compose.yml:config/<name>/docker-compose.yml`. Configuration lives in `config/<name>/`.
 
 ## Files to create
 
 ```
 config/<name>/
+├── docker-compose.yml         # Compose overlay for this backend
 ├── jdbc/<driver>.jar          # JDBC driver binary (committed or downloaded at setup)
 ├── nvg-config/
 │   ├── datasource.json        # connection URL
@@ -36,7 +37,6 @@ config/<name>/
 │   └── schema.json            # graph model mapping
 └── initdb/
     └── init.sql               # DDL + seed data (optional, auto-run on first start)
-docker-compose-<name>.yml
 ```
 
 ---
@@ -184,7 +184,7 @@ Dialect notes:
 
 ## Docker Compose overlay template
 
-`docker-compose-<name>.yml`:
+`config/<name>/docker-compose.yml`:
 
 ```yaml
 volumes:
@@ -198,7 +198,7 @@ services:
       - <ENV_VAR>=<value>
     volumes:
       - "nvg_<name>_data:/var/lib/<dbdir>/data"
-      - "./config/<name>/initdb:/docker-entrypoint-initdb.d"
+      - "./initdb:/docker-entrypoint-initdb.d"
     healthcheck:
       test: ["CMD-SHELL", "<healthcheck-command>"]
       interval: 5s
@@ -211,8 +211,8 @@ services:
       <name>-vg:
         condition: service_healthy
     volumes:
-      - "./config/<name>/jdbc/<driver>.jar:/var/lib/neo4j/lib/<driver>.jar"
-      - "./config/<name>/nvg-config:/nvg_home"
+      - "./jdbc/<driver>.jar:/var/lib/neo4j/lib/<driver>.jar"
+      - "./nvg-config:/nvg_home"
 ```
 
 No explicit `networks:` block needed — Docker Compose default network connects all services in the same project.
@@ -240,7 +240,7 @@ No explicit `networks:` block needed — Docker Compose default network connects
 Append to `.env.template`:
 ```bash
 # <BackendName> backend
-# COMPOSE_FILE=docker-compose.yml:docker-compose-<name>.yml
+# COMPOSE_FILE=docker-compose.yml:config/<name>/docker-compose.yml
 ```
 
 To activate, the user sets this in `.env`.
@@ -267,7 +267,7 @@ Add a commented entry inside the `\`\`\`dotenv` block in the Quick Start section
 
 ```dotenv
 # <BackendName> — <short description>
-# COMPOSE_FILE=docker-compose.yml:docker-compose-<name>.yml
+# COMPOSE_FILE=docker-compose.yml:config/<name>/docker-compose.yml
 ```
 
 ### 3. Backend section body
@@ -309,6 +309,7 @@ Add the new backend's directory to the `config/` tree:
 
 ```
 ├── <name>/
+│   ├── docker-compose.yml
 │   ├── initdb/init.sql
 │   ├── jdbc/<driver>.jar
 │   └── nvg-config/
