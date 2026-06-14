@@ -37,14 +37,20 @@ For input string: "t" under radix 2
 
 ---
 
-## SQL Server — `LIMIT` not supported (all queries fail)
+## Oracle / SQL Server — `LIMIT` not supported
+
+**Backends affected:** Oracle, SQL Server
 
 **Backends affected:** SQL Server
 
 **Symptom:**
 
 ```
+-- SQL Server
 Incorrect syntax near 'LIMIT'.
+
+-- Oracle
+ORA-03049: SQL keyword 'LIMIT' is not syntactically valid following '...FROM "NVG"."MOVIES" "m"'
 ```
 
 Generated SQL (from NVG):
@@ -53,11 +59,11 @@ Generated SQL (from NVG):
 SELECT "m"."title" FROM "dbo"."movies" AS "m" LIMIT ? /*param_0*/
 ```
 
-**Cause:** NVG's `Default` SQL dialect (used by all `generic` JDBC backends) generates `LIMIT ?` for result pagination. SQL Server T-SQL does not have a `LIMIT` clause — it uses `TOP n` (old syntax) or `FETCH FIRST n ROWS ONLY` with a mandatory `ORDER BY` (SQL:2008 syntax). There is no config knob to change the NVG SQL dialect.
+**Cause:** NVG's `Default` SQL dialect (used by all `generic` JDBC backends) generates `LIMIT ?` for result pagination. Neither Oracle nor SQL Server support the `LIMIT` clause — Oracle uses `FETCH FIRST n ROWS ONLY` with a mandatory `ORDER BY` (since 12c), and SQL Server uses `TOP n` or `FETCH FIRST n ROWS ONLY`. There is no config knob to change the NVG SQL dialect.
 
 **Impact:** Every Cypher query that uses `LIMIT` fails.
 
-**Workaround:** None. SQL Server is incompatible with the NVG `generic` JDBC type.
+**Workaround:** None at the JDBC URL or NVG config level. Avoid `LIMIT` in Cypher queries against Oracle or SQL Server backends.
 
 ---
 

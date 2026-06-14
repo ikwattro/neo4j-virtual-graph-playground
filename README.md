@@ -144,6 +144,8 @@ WAL logical replication is enabled (`wal_level=logical`) to support future CDC u
 
 > Oracle's container takes 60–120 seconds to initialize on the first run. The healthcheck gates Neo4j startup automatically.
 
+> **Note:** Cypher queries with `LIMIT` will fail — Oracle does not support the `LIMIT` clause. See [LIMITATIONS.md](LIMITATIONS.md) for details.
+
 ### SingleStore
 
 [SingleStore](https://www.singlestore.com/) is a distributed SQL database with MySQL-compatible syntax optimized for real-time analytics. It uses columnar storage by default, making it well-suited for analytical queries over the movies graph.
