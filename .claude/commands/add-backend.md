@@ -15,6 +15,11 @@ If the user hasn't specified, ask for:
 - Database name, username, password (default: `nvg`/`nvg`)
 - Schema/catalog values (see table below)
 - Whether to use the standard movies dataset or a custom schema
+- **Which tier** the backend belongs to — ask explicitly:
+  - **Simple** — single JDBC service, no extra setup, movies dataset
+  - **Intermediate** — richer schema or slightly more involved config
+  - **Advanced** — multi-service stack, custom dataset, or non-trivial setup
+  - **Exotic** — unusual protocol or architecture
 
 ## Architecture in one paragraph
 
@@ -191,12 +196,12 @@ No explicit `networks:` block needed — Docker Compose default network connects
 | Backend     | JDBC URL pattern                                                                      | catalog       | schema  | healthcheck                                        |
 |-------------|--------------------------------------------------------------------------------------|---------------|---------|---------------------------------------------------|
 | PostgreSQL  | `jdbc:postgresql://<svc>:5432/<db>`                                                  | db name       | public  | `pg_isready -U nvg`                               |
-| MySQL       | `jdbc:mysql://<svc>:3306/<db>`                                                       | db name       | (omit)  | `mysqladmin ping -h localhost -u nvg --password=nvg` |
-| Oracle      | `jdbc:oracle:thin:@<svc>:1521/FREE`                                                  | (omit)        | schema  | `healthcheck.sh`                                  |
+| MySQL       | `jdbc:mysql://<svc>:3306/<db>?sessionVariables=sql_mode=ANSI_QUOTES`                 | db name       | db name | `mysqladmin ping -h localhost -u nvg --password=nvg` |
+| Oracle      | `jdbc:oracle:thin:@<svc>:1521/FREE`                                                  | "" (empty)    | schema name (e.g. `NVG`) | `healthcheck.sh`              |
 | SingleStore | `jdbc:singlestore://<svc>:3306/<db>`                                                 | db name       | public  | `mysqladmin ping -h 127.0.0.1 -u nvg -pnvg`     |
 | DuckDB      | use `"type":"duckdb"` + `"path"` in datasource.json                                  | movies        | main    | n/a (embedded)                                    |
 | Pinot       | `jdbc:pinot://<ctrl>:9000?brokers=<broker>:8099&useMultistageEngine=true`            | "" (empty)    | default | curl controller healthcheck                       |
-| Neo4j       | `jdbc:neo4j://<host>:7687`                                                           | (omit)        | (omit)  | wget/curl bolt endpoint                           |
+| Neo4j       | `jdbc:neo4j://<host>:7687`                                                           | db name (e.g. `movies`) | public | wget/curl bolt endpoint              |
 
 ---
 
@@ -212,6 +217,83 @@ To activate, the user sets this in `.env`.
 
 ---
 
+## README.md — update all four locations
+
+After creating the files, update `README.md` in every place that lists backends. Never skip a section.
+
+### 1. Overview tier table (top of file)
+
+Add a row to the table that starts with `| Tier | Backend |`:
+
+```markdown
+| **<Tier>** | [<BackendName>](#<anchor>) | <one-line description> |
+```
+
+Use the tier the user chose. The anchor is the lowercase section heading (e.g. `mysql` → `#mysql`).
+
+### 2. Quick Start `.env` block
+
+Add a commented entry inside the `\`\`\`dotenv` block in the Quick Start section:
+
+```dotenv
+# <BackendName> — <short description>
+# COMPOSE_FILE=docker-compose.yml:docker-compose-<name>.yml
+```
+
+### 3. Backend section body
+
+Add a full section for the new backend under the correct tier heading:
+
+- **Simple** → under `## Simple Backends`
+- **Intermediate** → under `## Advanced Backends` (Intermediate backends live in this section — Sakila is the precedent)
+- **Advanced** → under `## Advanced Backends`
+- **Exotic** → under the last `---` before `## Repository Structure`
+
+Minimum content for a Simple/Intermediate backend section:
+
+```markdown
+### <BackendName>
+
+<One-sentence description of what makes this backend interesting.>
+
+| Property | Value |
+|----------|-------|
+| Image | `<image>:<tag>` |
+| Host port | `<host-port>` |
+| Database | `<db>` |
+| User / Password | `<user>` / `<password>` |
+| JDBC URL | `jdbc:<dialect>://<svc>:<port>/<db>` |
+
+**Sample queries:**
+
+\`\`\`cypher
+MATCH (m:Movie) RETURN m.title, m.release_year ORDER BY m.release_year DESC LIMIT 10
+
+MATCH path = (p:Person)-[:ACTED_IN]->(m:Movie) RETURN path LIMIT 25
+\`\`\`
+```
+
+### 4. Repository Structure tree
+
+Add the new backend's directory to the `config/` tree:
+
+```
+├── <name>/
+│   ├── initdb/init.sql
+│   ├── jdbc/<driver>.jar
+│   └── nvg-config/
+```
+
+### 5. Credentials Reference table
+
+Add a row at the bottom of the credentials table:
+
+```markdown
+| <BackendName> | `<username>` | `<password>` |
+```
+
+---
+
 ## Constraints and gotchas
 
 - The JDBC driver jar path inside Neo4j is always `/var/lib/neo4j/lib/<driver>.jar` — not `plugins/`
@@ -222,3 +304,7 @@ To activate, the user sets this in `.env`.
 - Property `type` values: `STRING`, `INTEGER`, `Long`, `String` (mixed case seen in existing configs — use `STRING`/`INTEGER` for nodes, check existing relationship configs for precedent)
 - `depends_on` with `condition: service_healthy` requires a `healthcheck` on the database service — don't skip it
 - Named volumes in overlays must be declared at the top-level `volumes:` key of the overlay file
+- For MySQL: always append `?sessionVariables=sql_mode=ANSI_QUOTES` to the JDBC URL — NVG generates double-quoted identifiers (ANSI SQL) and MySQL silently misinterprets them as string literals without this flag
+- The `"schema"` field in schema.json is **always required** — omitting it causes NVG to fail to resolve tables regardless of dialect. Use the value from the dialect reference table (`public`, `main`, `default`, etc.)
+- PostgreSQL `boolean` columns must **never** be mapped in schema.json — NVG's JDBC type mapper cannot handle PostgreSQL's `t`/`f` wire format and will throw `For input string: "t" under radix 2`
+- For MySQL: `"schema"` must equal the **database name** (e.g. `"nvg"`), NOT `"public"` — MySQL has no `public` schema; the database name IS the schema, and NVG uses it to qualify generated SQL table references (e.g. `"nvg"."people"`)

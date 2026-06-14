@@ -1,0 +1,31 @@
+volumes:
+  nvg_mysql_data:
+
+services:
+  mysql-vg:
+    image: mysql:8.4
+    container_name: mysql-vg
+    environment:
+      MYSQL_ROOT_PASSWORD: nvgroot
+      MYSQL_DATABASE: nvg
+      MYSQL_USER: nvg
+      MYSQL_PASSWORD: nvg
+    ports:
+      - "3388:3306"
+    volumes:
+      - "nvg_mysql_data:/var/lib/mysql"
+      - "./config/mysql/initdb:/docker-entrypoint-initdb.d"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u nvg --password=nvg"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  neo4j:
+    depends_on:
+      mysql-vg:
+        condition: service_healthy
+    volumes:
+      - "./config/mysql/jdbc/mysql-connector-j-9.7.0.jar:/var/lib/neo4j/lib/mysql-connector-j-9.7.0.jar"
+      - "./config/mysql/nvg-config:/nvg_home"

@@ -9,6 +9,7 @@ The repository ships with several pre-configured backends split into tiers:
 | **Simple** | [PostgreSQL](#simple-backends) | Single-service JDBC connection, classic movies graph |
 | **Simple** | [Oracle Free](#simple-backends) | Single-service JDBC connection, classic movies graph |
 | **Simple** | [SingleStore](#singlestore) | Single-service JDBC connection, classic movies graph — MySQL-compatible distributed SQL |
+| **Simple** | [MySQL](#mysql) | Single-service JDBC connection, classic movies graph |
 | **Intermediate** | [Sakila](#sakila) | More complex relational schema — DVD rental store |
 | **Advanced** | [LakeGraph](#lakegraph) | CSV files in MinIO, materialized by DuckDB on startup |
 | **Advanced** | [IceGraph](#icegraph) | Pre-built Apache Iceberg tables (Parquet) in MinIO, queried via DuckDB |
@@ -73,6 +74,9 @@ Then open `.env` and uncomment the line for the backend you want:
 
 # SingleStore — MySQL-compatible distributed SQL (movies graph)
 # COMPOSE_FILE=docker-compose.yml:docker-compose-singlestore.yml
+
+# MySQL (movies graph)
+# COMPOSE_FILE=docker-compose.yml:docker-compose-mysql.yml
 
 # Neo4jGraph — remote Neo4j instance virtualised via Neo4j JDBC (movies graph)
 # COMPOSE_FILE=docker-compose.yml:docker-compose-neo4j.yml
@@ -154,6 +158,35 @@ RETURN path
 ```
 
 ![virtual graphs](./screenshot1.png)
+
+### MySQL
+
+[MySQL](https://www.mysql.com/) is the world's most widely deployed open-source relational database. This backend exposes the classic movies graph via the MySQL Connector/J JDBC driver.
+
+| Property | Value |
+|----------|-------|
+| Image | `mysql:8.4` |
+| Host port | `3388` |
+| Database | `nvg` |
+| User / Password | `nvg` / `nvg` |
+| JDBC URL | `jdbc:mysql://mysql-vg:3306/nvg?sessionVariables=sql_mode=ANSI_QUOTES` |
+
+> **Setup:** download the JDBC driver before starting:
+> ```bash
+> curl -L -o config/mysql/jdbc/mysql-connector-j-9.1.0.jar \
+>   https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/9.1.0/mysql-connector-j-9.1.0.jar
+> ```
+
+**Sample queries:**
+
+```cypher
+MATCH (m:Movie) RETURN m.title, m.release_year ORDER BY m.release_year DESC LIMIT 10
+
+MATCH path = (p:Person)-[:ACTED_IN]->(m:Movie) RETURN path LIMIT 25
+
+MATCH path = (keanu:Person {name: 'Keanu Reeves'})-[:ACTED_IN]->(m:Movie)<-[:ACTED_IN]-(co:Person)
+RETURN path
+```
 
 ---
 
@@ -649,6 +682,7 @@ RETURN path
 ├── docker-compose.yml                        # Base Neo4j service definition
 ├── docker-compose-postgres.yml               # Simple: PostgreSQL overlay
 ├── docker-compose-oracle.yml                 # Simple: Oracle overlay
+├── docker-compose-mysql.yml                  # Simple: MySQL overlay
 ├── docker-compose-sakila.yml                 # Advanced: Sakila overlay
 ├── docker-compose-lakegraph.yml              # Advanced: LakeGraph (MinIO + DuckDB)
 ├── docker-compose-icegraph.yml               # Advanced: IceGraph (Iceberg + MinIO + DuckDB)
@@ -668,6 +702,10 @@ RETURN path
     ├── oracle/
     │   ├── initdb/init.sql
     │   ├── jdbc/ojdbc17.jar
+    │   └── nvg-config/
+    ├── mysql/
+    │   ├── initdb/init.sql
+    │   ├── jdbc/mysql-connector-j-9.1.0.jar     # Not committed — download manually (see setup above)
     │   └── nvg-config/
     ├── sakila/
     │   └── nvg-config/
@@ -803,6 +841,7 @@ docker compose down -v
 | Neo4j | `neo4j` | `hellopassword` |
 | PostgreSQL (movies) | `nvg` | `nvg` |
 | Oracle (movies) | `nvg` | `nvg` |
+| MySQL (movies) | `nvg` | `nvg` |
 | Sakila (PostgreSQL) | `sakila` | `p_ssW0rd` |
 | MinIO (LakeGraph) | `minio` | `hellopassword` |
 | MinIO (IceGraph) | `minio` | `hellopassword` |
