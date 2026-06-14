@@ -1,0 +1,4 @@
+{
+  "type": "generic",
+  "url": "jdbc:sqlserver://sqlserver-vg:1433;databaseName=nvg;trustServerCertificate=true"
+}

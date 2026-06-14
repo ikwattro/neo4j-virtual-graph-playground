@@ -37,6 +37,30 @@ For input string: "t" under radix 2
 
 ---
 
+## SQL Server — `LIMIT` not supported (all queries fail)
+
+**Backends affected:** SQL Server
+
+**Symptom:**
+
+```
+Incorrect syntax near 'LIMIT'.
+```
+
+Generated SQL (from NVG):
+
+```sql
+SELECT "m"."title" FROM "dbo"."movies" AS "m" LIMIT ? /*param_0*/
+```
+
+**Cause:** NVG's `Default` SQL dialect (used by all `generic` JDBC backends) generates `LIMIT ?` for result pagination. SQL Server T-SQL does not have a `LIMIT` clause — it uses `TOP n` (old syntax) or `FETCH FIRST n ROWS ONLY` with a mandatory `ORDER BY` (SQL:2008 syntax). There is no config knob to change the NVG SQL dialect.
+
+**Impact:** Every Cypher query that returns results fails. The backend is non-functional for query execution.
+
+**Workaround:** None. SQL Server is incompatible with the NVG `generic` JDBC type.
+
+---
+
 ## All backends — multiple relationship types in a single pattern not supported
 
 **Backends affected:** All

@@ -1,0 +1,32 @@
+volumes:
+  nvg_sqlserver_data:
+
+services:
+  sqlserver-vg:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver-vg
+    environment:
+      ACCEPT_EULA: Y
+      MSSQL_SA_PASSWORD: Nvg@1234
+    ports:
+      - "1433:1433"
+    volumes:
+      - "nvg_sqlserver_data:/var/opt/mssql"
+      - "./config/sqlserver/initdb:/initdb"
+    entrypoint:
+      - /bin/bash
+      - /initdb/entrypoint.sh
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Nvg@1234' -d nvg -Q 'SELECT COUNT(*) FROM people' -No -b"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+
+  neo4j:
+    depends_on:
+      sqlserver-vg:
+        condition: service_healthy
+    volumes:
+      - "./config/sqlserver/jdbc/mssql-jdbc-12.8.1.jre11.jar:/var/lib/neo4j/lib/mssql-jdbc-12.8.1.jre11.jar"
+      - "./config/sqlserver/nvg-config:/nvg_home"

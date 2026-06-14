@@ -11,6 +11,7 @@ The repository ships with several pre-configured backends split into tiers:
 | **Simple** | [SingleStore](#singlestore) | Single-service JDBC connection, classic movies graph — MySQL-compatible distributed SQL |
 | **Simple** | [MySQL](#mysql) | Single-service JDBC connection, classic movies graph |
 | **Simple** | [MariaDB](#mariadb) | Single-service JDBC connection, classic movies graph — MySQL-compatible with native MariaDB Connector/J |
+| **Simple** | [SQL Server](#sql-server) | Single-service JDBC connection, classic movies graph — Microsoft SQL Server 2022 |
 | **Intermediate** | [Sakila](#sakila) | More complex relational schema — DVD rental store |
 | **Advanced** | [LakeGraph](#lakegraph) | CSV files in MinIO, materialized by DuckDB on startup |
 | **Advanced** | [IceGraph](#icegraph) | Pre-built Apache Iceberg tables (Parquet) in MinIO, queried via DuckDB |
@@ -81,6 +82,9 @@ Then open `.env` and uncomment the line for the backend you want:
 
 # MariaDB — MySQL-compatible, native Connector/J (movies graph)
 # COMPOSE_FILE=docker-compose.yml:docker-compose-mariadb.yml
+
+# SQL Server — Microsoft SQL Server 2022 (movies graph)
+# COMPOSE_FILE=docker-compose.yml:docker-compose-sqlserver.yml
 
 # Neo4jGraph — remote Neo4j instance virtualised via Neo4j JDBC (movies graph)
 # COMPOSE_FILE=docker-compose.yml:docker-compose-neo4j.yml
@@ -218,6 +222,31 @@ RETURN path
 MATCH (m:Movie) RETURN m.title, m.release_year LIMIT 10
 
 MATCH path = (p:Person)-[:ACTED_IN]->(m:Movie) RETURN path LIMIT 25
+
+MATCH path = (keanu:Person {name: 'Keanu Reeves'})-[:ACTED_IN]->(m:Movie)<-[:ACTED_IN]-(co:Person)
+RETURN path
+```
+
+### SQL Server
+
+[Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server) is a widely-used enterprise relational database. This backend uses the Microsoft JDBC Driver for SQL Server and exposes the classic movies graph.
+
+| Property | Value |
+|----------|-------|
+| Image | `mcr.microsoft.com/mssql/server:2022-latest` |
+| Host port | `1433` |
+| Database | `nvg` |
+| User / Password | `nvg` / `nvg` |
+| JDBC URL | `jdbc:sqlserver://sqlserver-vg:1433;databaseName=nvg;trustServerCertificate=true` |
+
+> **Note:** Cypher queries with `LIMIT` will fail — SQL Server T-SQL has no `LIMIT` keyword. See [LIMITATIONS.md](LIMITATIONS.md) for details.
+
+> **Startup time:** SQL Server 2022 takes 20–40 seconds to initialize. The healthcheck gates Neo4j startup automatically.
+
+**Sample queries (no LIMIT):**
+
+```cypher
+MATCH path = (p:Person)-[:ACTED_IN]->(m:Movie) RETURN path
 
 MATCH path = (keanu:Person {name: 'Keanu Reeves'})-[:ACTED_IN]->(m:Movie)<-[:ACTED_IN]-(co:Person)
 RETURN path
@@ -746,6 +775,11 @@ RETURN path
     │   ├── initdb/init.sql
     │   ├── jdbc/mariadb-java-client-3.4.1.jar   # Not committed — download manually (see setup above)
     │   └── nvg-config/
+    ├── sqlserver/
+    │   ├── initdb/init.sql
+    │   ├── initdb/entrypoint.sh
+    │   ├── jdbc/mssql-jdbc-12.8.1.jre11.jar
+    │   └── nvg-config/
     ├── sakila/
     │   └── nvg-config/
     ├── lakegraph/
@@ -886,3 +920,4 @@ docker compose down -v
 | MinIO (LakeGraph) | `minio` | `hellopassword` |
 | MinIO (IceGraph) | `minio` | `hellopassword` |
 | Pinot Controller / Broker | — | no authentication |
+| SQL Server (movies) | `nvg` | `nvg` |
