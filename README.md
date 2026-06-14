@@ -18,6 +18,8 @@ The repository ships with several pre-configured backends split into tiers:
 | **Advanced** | [PinotGraph](#pinotgraph) | Apache Pinot OLAP cluster — real-time analytics store with multi-stage SQL engine |
 | **Exotic** | [Neo4jGraph](#neo4jgraph) | Remote Neo4j instance virtualised via Neo4j JDBC — Cypher → cypher2sql → sql2cypher |
 
+> Some backends have known query limitations (unsupported SQL syntax, unsupported column types). See [LIMITATIONS.md](LIMITATIONS.md) for details.
+
 ---
 
 ## How It Works
