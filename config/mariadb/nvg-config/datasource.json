@@ -1,0 +1,4 @@
+{
+  "type" : "generic",
+  "url" : "jdbc:mariadb://mariadb-vg:3306/nvg?sessionVariables=sql_mode=ANSI_QUOTES"
+}

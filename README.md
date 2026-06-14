@@ -10,6 +10,7 @@ The repository ships with several pre-configured backends split into tiers:
 | **Simple** | [Oracle Free](#simple-backends) | Single-service JDBC connection, classic movies graph |
 | **Simple** | [SingleStore](#singlestore) | Single-service JDBC connection, classic movies graph — MySQL-compatible distributed SQL |
 | **Simple** | [MySQL](#mysql) | Single-service JDBC connection, classic movies graph |
+| **Simple** | [MariaDB](#mariadb) | Single-service JDBC connection, classic movies graph — MySQL-compatible with native MariaDB Connector/J |
 | **Intermediate** | [Sakila](#sakila) | More complex relational schema — DVD rental store |
 | **Advanced** | [LakeGraph](#lakegraph) | CSV files in MinIO, materialized by DuckDB on startup |
 | **Advanced** | [IceGraph](#icegraph) | Pre-built Apache Iceberg tables (Parquet) in MinIO, queried via DuckDB |
@@ -77,6 +78,9 @@ Then open `.env` and uncomment the line for the backend you want:
 
 # MySQL (movies graph)
 # COMPOSE_FILE=docker-compose.yml:docker-compose-mysql.yml
+
+# MariaDB — MySQL-compatible, native Connector/J (movies graph)
+# COMPOSE_FILE=docker-compose.yml:docker-compose-mariadb.yml
 
 # Neo4jGraph — remote Neo4j instance virtualised via Neo4j JDBC (movies graph)
 # COMPOSE_FILE=docker-compose.yml:docker-compose-neo4j.yml
@@ -181,6 +185,37 @@ RETURN path
 
 ```cypher
 MATCH (m:Movie) RETURN m.title, m.release_year ORDER BY m.release_year DESC LIMIT 10
+
+MATCH path = (p:Person)-[:ACTED_IN]->(m:Movie) RETURN path LIMIT 25
+
+MATCH path = (keanu:Person {name: 'Keanu Reeves'})-[:ACTED_IN]->(m:Movie)<-[:ACTED_IN]-(co:Person)
+RETURN path
+```
+
+### MariaDB
+
+[MariaDB](https://mariadb.org/) is an open-source MySQL-compatible database with its own native JDBC connector. This backend uses the MariaDB Connector/J (`jdbc:mariadb://`) rather than the MySQL Connector/J, making it a useful companion to the MySQL backend for comparing driver behaviour.
+
+| Property | Value |
+|----------|-------|
+| Image | `mariadb:11` |
+| Host port | `3389` |
+| Database | `nvg` |
+| User / Password | `nvg` / `nvg` |
+| JDBC URL | `jdbc:mariadb://mariadb-vg:3306/nvg?sessionVariables=sql_mode=ANSI_QUOTES` |
+
+> **Setup:** download the JDBC driver before starting:
+> ```bash
+> curl -L -o config/mariadb/jdbc/mariadb-java-client-3.4.1.jar \
+>   https://repo1.maven.org/maven2/org/mariadb/jdbc/mariadb-java-client/3.4.1/mariadb-java-client-3.4.1.jar
+> ```
+
+> **Note:** Cypher queries with `ORDER BY` will fail — MariaDB 11 does not support `NULLS LAST` in regular `ORDER BY` clauses. See [LIMITATIONS.md](LIMITATIONS.md) for details.
+
+**Sample queries (no ORDER BY):**
+
+```cypher
+MATCH (m:Movie) RETURN m.title, m.release_year LIMIT 10
 
 MATCH path = (p:Person)-[:ACTED_IN]->(m:Movie) RETURN path LIMIT 25
 
@@ -707,6 +742,10 @@ RETURN path
     │   ├── initdb/init.sql
     │   ├── jdbc/mysql-connector-j-9.1.0.jar     # Not committed — download manually (see setup above)
     │   └── nvg-config/
+    ├── mariadb/
+    │   ├── initdb/init.sql
+    │   ├── jdbc/mariadb-java-client-3.4.1.jar   # Not committed — download manually (see setup above)
+    │   └── nvg-config/
     ├── sakila/
     │   └── nvg-config/
     ├── lakegraph/
@@ -842,6 +881,7 @@ docker compose down -v
 | PostgreSQL (movies) | `nvg` | `nvg` |
 | Oracle (movies) | `nvg` | `nvg` |
 | MySQL (movies) | `nvg` | `nvg` |
+| MariaDB (movies) | `nvg` | `nvg` |
 | Sakila (PostgreSQL) | `sakila` | `p_ssW0rd` |
 | MinIO (LakeGraph) | `minio` | `hellopassword` |
 | MinIO (IceGraph) | `minio` | `hellopassword` |

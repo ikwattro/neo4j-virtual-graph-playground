@@ -1,0 +1,31 @@
+volumes:
+  nvg_mariadb_data:
+
+services:
+  mariadb-vg:
+    image: mariadb:11
+    container_name: mariadb-vg
+    environment:
+      MARIADB_ROOT_PASSWORD: nvgroot
+      MARIADB_DATABASE: nvg
+      MARIADB_USER: nvg
+      MARIADB_PASSWORD: nvg
+    ports:
+      - "3389:3306"
+    volumes:
+      - "nvg_mariadb_data:/var/lib/mysql"
+      - "./config/mariadb/initdb:/docker-entrypoint-initdb.d"
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h localhost -u nvg --password=nvg"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  neo4j:
+    depends_on:
+      mariadb-vg:
+        condition: service_healthy
+    volumes:
+      - "./config/mariadb/jdbc/mariadb-java-client-3.4.1.jar:/var/lib/neo4j/lib/mariadb-java-client-3.4.1.jar"
+      - "./config/mariadb/nvg-config:/nvg_home"

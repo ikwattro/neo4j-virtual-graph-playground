@@ -1,21 +1,21 @@
 # Known Limitations
 
-## MySQL — `ORDER BY ... NULLS LAST` not supported
+## MySQL / MariaDB — `ORDER BY ... NULLS LAST` not supported
 
-**Backends affected:** MySQL
+**Backends affected:** MySQL, MariaDB
 
 **Symptom:**
 
 ```
-You have an error in your SQL syntax; check the manual that corresponds to your MySQL server
-version for the right syntax to use near 'NULLS LAST\nLIMIT 10'
+You have an error in your SQL syntax; check the manual that corresponds to your MariaDB/MySQL
+server version for the right syntax to use near 'NULLS LAST\nLIMIT 10'
 ```
 
-**Cause:** NVG generates standard SQL `ORDER BY <col> DESC NULLS LAST` for any ordered query. MySQL has never implemented `NULLS FIRST` / `NULLS LAST` (SQL:2003). The clause is silently supported in MariaDB 10.6+ but not in MySQL 8.x.
+**Cause:** NVG generates standard SQL `ORDER BY <col> DESC NULLS LAST` for any ordered query. Neither MySQL 8.x nor MariaDB 11 implement `NULLS FIRST` / `NULLS LAST` (SQL:2003) in regular `ORDER BY` clauses. MariaDB 10.6 added it for window function `ORDER BY` only — not for top-level `ORDER BY`.
 
 **Impact:** Any Cypher query with `ORDER BY` on a nullable column will fail at the SQL layer.
 
-**Workaround:** None at the JDBC URL or NVG config level. Either avoid `ORDER BY` in Cypher queries against this backend, or migrate to MariaDB.
+**Workaround:** None at the JDBC URL or NVG config level. Avoid `ORDER BY` in Cypher queries against MySQL or MariaDB backends.
 
 ---
 
