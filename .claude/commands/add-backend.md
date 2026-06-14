@@ -45,13 +45,15 @@ docker-compose-<name>.yml
 
 ### `config/<name>/nvg-config/datasource.json`
 
-JDBC backend:
+JDBC backend (`generic` type — used for PostgreSQL, Oracle, MySQL, MariaDB, and any other driver not listed as a first-class type):
 ```json
 {
   "type": "generic",
   "url": "jdbc:<dialect>://<service-name>:<port>/<database>"
 }
 ```
+
+> **Dialect note:** `generic` backends always run with the `Default` SQL dialect inside Graph Engine. There is no config knob to change this. The `Default` dialect generates standard SQL including `ORDER BY … NULLS LAST`, which MySQL and MariaDB do not support. Plan around this before choosing a `generic` backend.
 
 DuckDB embedded:
 ```json
@@ -60,6 +62,32 @@ DuckDB embedded:
   "path": "/duckdb-data/<name>.duckdb"
 }
 ```
+
+SQLite embedded (first-class type, useful for demos — no server needed):
+```json
+{
+  "type": "sqlite",
+  "path": "/sqlite-data/<name>.db"
+}
+```
+
+Any datasource type also accepts an optional `additionalProperties` object. Graph Engine intercepts three reserved keys before forwarding the rest verbatim to the JDBC driver via HikariCP:
+
+```json
+{
+  "type": "generic",
+  "url": "jdbc:postgresql://db:5432/nvg",
+  "additionalProperties": {
+    "hikari.minimumIdle": "1",
+    "hikari.maximumPoolSize": "5",
+    "jdbc.fetch_size": "1000"
+  }
+}
+```
+
+- `hikari.minimumIdle` / `hikari.maximumPoolSize` — connection pool sizing (handled by Graph Engine, not forwarded to the driver)
+- `jdbc.fetch_size` — row fetch size; SQLite honours this fully, most other drivers ignore it
+- anything else is forwarded as-is to the driver (e.g. `ApplicationName`, `defaultRowPrefetch`)
 
 ### `config/<name>/nvg-config/secret.json`
 ```json
@@ -193,15 +221,17 @@ No explicit `networks:` block needed — Docker Compose default network connects
 
 ## Dialect reference
 
-| Backend     | JDBC URL pattern                                                                      | catalog       | schema  | healthcheck                                        |
-|-------------|--------------------------------------------------------------------------------------|---------------|---------|---------------------------------------------------|
-| PostgreSQL  | `jdbc:postgresql://<svc>:5432/<db>`                                                  | db name       | public  | `pg_isready -U nvg`                               |
-| MySQL       | `jdbc:mysql://<svc>:3306/<db>?sessionVariables=sql_mode=ANSI_QUOTES`                 | db name       | db name | `mysqladmin ping -h localhost -u nvg --password=nvg` |
-| Oracle      | `jdbc:oracle:thin:@<svc>:1521/FREE`                                                  | "" (empty)    | schema name (e.g. `NVG`) | `healthcheck.sh`              |
-| SingleStore | `jdbc:singlestore://<svc>:3306/<db>`                                                 | db name       | public  | `mysqladmin ping -h 127.0.0.1 -u nvg -pnvg`     |
-| DuckDB      | use `"type":"duckdb"` + `"path"` in datasource.json                                  | movies        | main    | n/a (embedded)                                    |
-| Pinot       | `jdbc:pinot://<ctrl>:9000?brokers=<broker>:8099&useMultistageEngine=true`            | "" (empty)    | default | curl controller healthcheck                       |
-| Neo4j       | `jdbc:neo4j://<host>:7687`                                                           | db name (e.g. `movies`) | public | wget/curl bolt endpoint              |
+| Backend     | JDBC URL pattern                                                                      | catalog       | schema  | healthcheck                                        | ORDER BY safe? |
+|-------------|--------------------------------------------------------------------------------------|---------------|---------|---------------------------------------------------|----------------|
+| PostgreSQL  | `jdbc:postgresql://<svc>:5432/<db>`                                                  | db name       | public  | `pg_isready -U nvg`                               | yes |
+| MySQL       | `jdbc:mysql://<svc>:3306/<db>?sessionVariables=sql_mode=ANSI_QUOTES`                 | db name       | db name | `mysqladmin ping -h localhost -u nvg --password=nvg` | **no** — no NULLS LAST |
+| MariaDB     | `jdbc:mariadb://<svc>:3306/<db>?sessionVariables=sql_mode=ANSI_QUOTES`               | db name       | db name | `mariadb-admin ping -h localhost -u nvg --password=nvg` | **no** — no NULLS LAST |
+| Oracle      | `jdbc:oracle:thin:@<svc>:1521/FREE`                                                  | "" (empty)    | schema name (e.g. `NVG`) | `healthcheck.sh`              | yes |
+| SingleStore | `jdbc:singlestore://<svc>:3306/<db>`                                                 | db name       | public  | `mysqladmin ping -h 127.0.0.1 -u nvg -pnvg`     | yes |
+| DuckDB      | use `"type":"duckdb"` + `"path"` in datasource.json                                  | movies        | main    | n/a (embedded)                                    | yes |
+| SQLite      | use `"type":"sqlite"` + `"path"` in datasource.json                                  | db name       | main    | n/a (embedded)                                    | yes |
+| Pinot       | `jdbc:pinot://<ctrl>:9000?brokers=<broker>:8099&useMultistageEngine=true`            | "" (empty)    | default | curl controller healthcheck                       | yes |
+| Neo4j       | `jdbc:neo4j://<host>:7687`                                                           | db name (e.g. `movies`) | public | wget/curl bolt endpoint              | yes |
 
 ---
 
@@ -297,6 +327,7 @@ Add a row at the bottom of the credentials table:
 ## Constraints and gotchas
 
 - The JDBC driver jar path inside Neo4j is always `/var/lib/neo4j/lib/<driver>.jar` — not `plugins/`
+- **Never use wildcard volume mounts into `/var/lib/neo4j/lib/`** — Docker does not support them into existing directories; a wildcard mount shadows the entire `lib/` folder and Neo4j cannot start. Always mount each driver JAR individually as a named path.
 - `nvg-config` directory mounts to `/nvg_home` and replaces the entire config — all three JSON files must be present
 - `catalog` in schema.json must match the actual database/catalog name the JDBC driver sees, not necessarily what you named the Docker service
 - For DuckDB, `schema` is `main` not `public`
