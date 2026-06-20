@@ -22,7 +22,7 @@ services:
       - NEO4J_URI=bolt://neo4j2:7687
       - IMPORT_PATH=/config
     volumes:
-      - "./seed:/config"
+      - "./config/neo4j/seed:/config"
     depends_on:
       neo4j2:
         condition: service_healthy
@@ -31,5 +31,5 @@ services:
       neo4j-config-cli:
         condition: service_completed_successfully
     volumes:
-      - "./jdbc/neo4j-jdbc-driver-6.13.0.jar:/var/lib/neo4j/lib/neo4j-jdbc-driver-6.13.0.jar"
-      - "./nvg-config:/nvg_home"
+      - "./config/neo4j/jdbc/neo4j-jdbc-driver-6.13.0.jar:/var/lib/neo4j/lib/neo4j-jdbc-driver-6.13.0.jar"
+      - "./config/neo4j/nvg-config:/nvg_home"

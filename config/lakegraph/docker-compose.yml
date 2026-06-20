@@ -27,7 +27,7 @@ services:
       minio:
         condition: service_healthy
     volumes:
-      - ../minio:/csv
+      - ./config/minio:/csv
     entrypoint: >
       /bin/sh -c "
       /usr/bin/mc alias set local http://minio:9000 minio hellopassword &&
@@ -43,7 +43,7 @@ services:
 
   duckdb:
     build:
-      context: ./duckdb
+      context: ./config/lakegraph/duckdb
     container_name: duckdb-playground
     depends_on:
       minio:
@@ -64,6 +64,6 @@ services:
       duckdb:
         condition: service_healthy
     volumes:
-      - "./jdbc/duckdb_jdbc-1.5.3.0.jar:/var/lib/neo4j/lib/duckdb_jdbc-1.5.3.0.jar"
-      - "./nvg-config:/nvg_home"
+      - "./config/lakegraph/jdbc/duckdb_jdbc-1.5.3.0.jar:/var/lib/neo4j/lib/duckdb_jdbc-1.5.3.0.jar"
+      - "./config/lakegraph/nvg-config:/nvg_home"
       - "duckdb-data:/duckdb-data:ro"

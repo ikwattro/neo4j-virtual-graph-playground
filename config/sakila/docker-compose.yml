@@ -18,5 +18,5 @@ services:
       sakila-vg:
         condition: service_healthy
     volumes:
-      - "../postgres/jdbc/postgresql-42.7.11.jar:/var/lib/neo4j/lib/postgresql-42.7.11.jar"
-      - "./nvg-config:/nvg_home"
+      - "./config/postgres/jdbc/postgresql-42.7.11.jar:/var/lib/neo4j/lib/postgresql-42.7.11.jar"
+      - "./config/sakila/nvg-config:/nvg_home"

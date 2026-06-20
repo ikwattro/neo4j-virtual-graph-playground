@@ -10,7 +10,7 @@ services:
       - 5488:5432
     volumes:
       - "nvg_postgres_data:/var/lib/postgresql/data"
-      - "./initdb:/docker-entrypoint-initdb.d"
+      - "./config/postgres/initdb:/docker-entrypoint-initdb.d"
     command: ["postgres", "-c", "wal_level=logical", "-c", "log_statement=all"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nvg"]
@@ -23,5 +23,5 @@ services:
       postgres-vg:
         condition: service_healthy
     volumes:
-      - "./jdbc/postgresql-42.7.11.jar:/var/lib/neo4j/lib/postgresql-42.7.11.jar"
-      - "./nvg-config:/nvg_home"
+      - "./config/postgres/jdbc/postgresql-42.7.11.jar:/var/lib/neo4j/lib/postgresql-42.7.11.jar"
+      - "./config/postgres/nvg-config:/nvg_home"
