@@ -1,6 +1,6 @@
 services:
   neo4j2:
-    image: neo4j:2026.05.0-enterprise
+    image: neo4j:2026.06.0-enterprise
     ports:
       - 17474:7474
       - 17473:7473
