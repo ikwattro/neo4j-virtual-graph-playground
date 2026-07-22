@@ -16,6 +16,9 @@ config/lakegraph/jdbc/*.jar
 config/pinot/jdbc/*.jar
 config/pinot/build/target/
 
+# ClickHouse JDBC driver — shaded uber-jar, download manually (see ClickHouse README setup)
+config/clickhouse/jdbc/*.jar
+
 # PyIceberg local catalog tracker — generated during warehouse creation, not needed at runtime
 iceberg_catalog.db
 

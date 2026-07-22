@@ -11,6 +11,7 @@ A hands-on sandbox for exploring the **Neo4j Virtual Graphs** feature, which let
 | **Simple** | [MariaDB](config/mariadb/README.md) | MySQL-compatible with native MariaDB Connector/J, classic movies graph |
 | **Simple** | [SQL Server](config/sqlserver/README.md) | Microsoft SQL Server 2022, classic movies graph |
 | **Intermediate** | [Sakila](config/sakila/README.md) | More complex relational schema — DVD rental store |
+| **Intermediate** | [ClickHouse](config/clickhouse/README.md) | Column-oriented OLAP engine — MergeTree tables, no FK enforcement, inverted JDBC catalog/schema semantics |
 | **Advanced** | [LakeGraph](config/lakegraph/README.md) | CSV files in MinIO, materialized by DuckDB on startup |
 | **Advanced** | [IceGraph](config/icegraph/README.md) | Pre-built Apache Iceberg tables (Parquet) in MinIO, queried via DuckDB |
 | **Advanced** | [PinotGraph](config/pinot/README.md) | Apache Pinot OLAP cluster — real-time analytics store with multi-stage SQL engine |
@@ -102,6 +103,7 @@ docker compose down -v
 | MariaDB (movies) | `nvg` | `nvg` |
 | SingleStore (movies) | `root` | `nvg` |
 | Sakila (PostgreSQL) | `sakila` | `p_ssW0rd` |
+| ClickHouse (movies) | `nvg` | `nvg` |
 | Workspaces (PostgreSQL) | `workspaces` | `workspaces` |
 | MinIO (LakeGraph) | `minio` | `hellopassword` |
 | MinIO (IceGraph) | `minio` | `hellopassword` |
@@ -119,6 +121,7 @@ docker compose down -v
 - [MariaDB](config/mariadb/README.md)
 - [SQL Server](config/sqlserver/README.md)
 - [Sakila](config/sakila/README.md)
+- [ClickHouse](config/clickhouse/README.md)
 - [LakeGraph](config/lakegraph/README.md)
 - [IceGraph](config/icegraph/README.md)
 - [PinotGraph](config/pinot/README.md)

@@ -1,0 +1,30 @@
+volumes:
+  nvg_clickhouse_data:
+
+services:
+  clickhouse-vg:
+    image: clickhouse/clickhouse-server:latest-alpine
+    environment:
+      - CLICKHOUSE_DB=nvg
+      - CLICKHOUSE_USER=nvg
+      - CLICKHOUSE_PASSWORD=nvg
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - "nvg_clickhouse_data:/var/lib/clickhouse"
+      - "./config/clickhouse/initdb:/docker-entrypoint-initdb.d"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8123/ping || exit 1"]
+      interval: 5s
+      retries: 10
+      start_period: 15s
+      timeout: 5s
+  neo4j:
+    depends_on:
+      clickhouse-vg:
+        condition: service_healthy
+    volumes:
+      - "./config/clickhouse/jdbc/clickhouse-jdbc-0.9.0-all.jar:/var/lib/neo4j/lib/clickhouse-jdbc-0.9.0-all.jar"
+      - "./config/clickhouse/nvg-config:/nvg_home"

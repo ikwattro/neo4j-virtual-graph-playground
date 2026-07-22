@@ -1,0 +1,4 @@
+{
+  "type" : "generic",
+  "url" : "jdbc:clickhouse://clickhouse-vg:8123/nvg"
+}
