@@ -18,6 +18,7 @@
         "properties": [
           {"name": "title",            "column": "TITLE",            "type": "STRING"},
           {"name": "description",      "column": "DESCRIPTION",      "type": "STRING"},
+          {"name": "release_year",     "column": "RELEASE_YEAR",     "type": "INTEGER"},
           {"name": "rental_duration",  "column": "RENTAL_DURATION",  "type": "INTEGER"},
           {"name": "rental_rate",      "column": "RENTAL_RATE",      "type": "FLOAT"},
           {"name": "length",           "column": "LENGTH",           "type": "INTEGER"},
@@ -65,7 +66,8 @@
           {"name": "first_name", "column": "FIRST_NAME", "type": "STRING"},
           {"name": "last_name",  "column": "LAST_NAME",  "type": "STRING"},
           {"name": "email",      "column": "EMAIL",      "type": "STRING"},
-          {"name": "username",   "column": "USERNAME",   "type": "STRING"}
+          {"name": "username",   "column": "USERNAME",   "type": "STRING"},
+          {"name": "active",     "column": "ACTIVE",     "type": "BOOLEAN"}
         ],
         "key": [{"column": "STAFF_ID"}]
       },

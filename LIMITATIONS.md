@@ -35,6 +35,10 @@ For input string: "t" under radix 2
 
 **Workaround:** Exclude all boolean columns from `schema.json`. Do not map `boolean` columns as node or relationship properties. Affected columns in the Sakila dataset: `customer.activebool`, `customer.active`, `staff.active`.
 
+## PostgreSQL - domain column types not supported
+
+**Domain-typed columns not supported:** `film.release_year` in Sakila example is a PostgreSQL domain type (`year`, a `CREATE DOMAIN ... AS integer`), not a plain `integer`. NVG's JDBC type mapper reports domain columns as `DISTINCT`, which it doesn't support, and Neo4j fails to start with `IllegalArgumentException: Unsupported JDBC Type returned from remote database DISTINCT`. Do not add `release_year` to the schema.
+
 ---
 
 ## Oracle / SQL Server — `LIMIT` not supported
