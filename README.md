@@ -30,7 +30,7 @@ Neo4j Virtual Graphs reads a small set of JSON configuration files (`datasource.
 ## Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose plugin)
-- A valid **Neo4j Enterprise** license — the image used is `neo4j:2026.05.0-enterprise` and will not start without accepting the license agreement (already set in the compose file via `NEO4J_ACCEPT_LICENSE_AGREEMENT=yes`)
+- A valid **Neo4j Enterprise** license — the image used is `neo4j:2026.09.0-enterprise` and will not start without accepting the license agreement (already set in the compose file via `NEO4J_ACCEPT_LICENSE_AGREEMENT=yes`)
 - **SSL certificates** — required for features such as remote aliases; self-signed demo certs are included in the repository (see [SSL Certificates](#ssl-certificates))
 - Some backends require a one-time setup step (driver download or fat jar build) — see each backend's README
 
