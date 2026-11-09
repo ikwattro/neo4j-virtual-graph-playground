@@ -1,0 +1,4 @@
+{
+  "type": "generic",
+  "url": "jdbc:sqlserver://<your-sql-endpoint>.datawarehouse.fabric.microsoft.com:1433;database=nvg;encrypt=true;authentication=ActiveDirectoryServicePrincipal"
+}
