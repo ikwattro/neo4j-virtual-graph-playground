@@ -71,6 +71,23 @@ SELECT "m"."title" FROM "dbo"."movies" AS "m" LIMIT ? /*param_0*/
 
 ---
 
+## Microsoft Fabric — same T-SQL issues as SQL Server
+
+**Backends affected:** Microsoft Fabric
+
+**Symptom:**
+
+```
+Incorrect syntax near 'LIMIT'.
+Incorrect syntax near 'NULLS'.
+```
+
+**Cause:** Fabric Data Warehouse speaks T-SQL, so the `Default` dialect has the same problems as with SQL Server: no `LIMIT`, and no `NULLS FIRST` / `NULLS LAST` in `ORDER BY`.
+
+**Workaround:** Sort and limit in Neo4j after a `collect` / `UNWIND`. See the [Fabric README](config/fabric/README.md).
+
+---
+
 ## All backends — multiple relationship types in a single pattern not supported
 
 **Backends affected:** All

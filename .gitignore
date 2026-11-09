@@ -19,6 +19,10 @@ config/pinot/build/target/
 # ClickHouse JDBC driver — shaded uber-jar, download manually (see ClickHouse README setup)
 config/clickhouse/jdbc/*.jar
 
+# Fabric connection details and service principal secret — copied from the .template files
+config/fabric/nvg-config/datasource.json
+config/fabric/nvg-config/secret.json
+
 # PyIceberg local catalog tracker — generated during warehouse creation, not needed at runtime
 iceberg_catalog.db
 
