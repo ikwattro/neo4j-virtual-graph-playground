@@ -21,6 +21,7 @@ Run `/add-backend` — the skill has all templates and dialect-specific patterns
 | oracle      | Simple JDBC    | config/oracle/docker-compose.yml       |
 | singlestore | Simple JDBC    | config/singlestore/docker-compose.yml  |
 | sakila      | Complex JDBC   | config/sakila/docker-compose.yml       |
+| fabric      | Hosted T-SQL   | config/fabric/docker-compose.yml       |
 | lakegraph   | CSV→DuckDB     | config/lakegraph/docker-compose.yml    |
 | icegraph    | Iceberg→DuckDB | config/icegraph/docker-compose.yml     |
 | pinot       | OLAP cluster   | config/pinot/docker-compose.yml        |

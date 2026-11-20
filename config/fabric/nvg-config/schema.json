@@ -1,0 +1,97 @@
+{
+  "catalog": "nvg",
+  "schema": "dbo",
+  "entities": {
+    "nodes": [
+      {
+        "label": "Movie",
+        "table": "movies",
+        "properties": [
+          {
+            "name": "release_year",
+            "column": "released",
+            "type": "INTEGER"
+          },
+          {
+            "name": "tagline",
+            "column": "tagline",
+            "type": "STRING"
+          },
+          {
+            "name": "title",
+            "column": "title",
+            "type": "STRING"
+          }
+        ],
+        "key": [
+          {
+            "column": "id"
+          }
+        ]
+      },
+      {
+        "label": "Person",
+        "table": "people",
+        "properties": [
+          {
+            "name": "name",
+            "column": "name",
+            "type": "STRING"
+          },
+          {
+            "name": "born",
+            "column": "born",
+            "type": "INTEGER"
+          }
+        ],
+        "key": [
+          {
+            "column": "id"
+          }
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "label": "ACTED_IN",
+        "table": "movie_actors",
+        "start": {
+          "targetEntity": "Person",
+          "keys": [
+            {
+              "nodeColumn": "id",
+              "relationshipColumn": "person_id"
+            }
+          ]
+        },
+        "end": {
+          "targetEntity": "Movie",
+          "keys": [
+            {
+              "nodeColumn": "id",
+              "relationshipColumn": "movie_id"
+            }
+          ]
+        },
+        "properties": [
+          {
+            "name": "role",
+            "column": "role",
+            "type": "String"
+          }
+        ],
+        "key": [
+          {
+            "column": "person_id"
+          },
+          {
+            "column": "movie_id"
+          },
+          {
+            "column": "role"
+          }
+        ]
+      }
+    ]
+  }
+}

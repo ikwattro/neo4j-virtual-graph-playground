@@ -12,6 +12,7 @@ A hands-on sandbox for exploring the **Neo4j Virtual Graphs** feature, which let
 | **Simple** | [SQL Server](config/sqlserver/README.md) | Microsoft SQL Server 2022, classic movies graph |
 | **Intermediate** | [Sakila](config/sakila/README.md) | More complex relational schema — DVD rental store |
 | **Intermediate** | [ClickHouse](config/clickhouse/README.md) | Column-oriented OLAP engine — MergeTree tables, no FK enforcement, inverted JDBC catalog/schema semantics |
+| **Intermediate** | [Microsoft Fabric](config/fabric/README.md) | Hosted Fabric Data Warehouse (bring your own capacity) — Entra service principal over the SQL Server JDBC driver |
 | **Advanced** | [LakeGraph](config/lakegraph/README.md) | CSV files in MinIO, materialized by DuckDB on startup |
 | **Advanced** | [IceGraph](config/icegraph/README.md) | Pre-built Apache Iceberg tables (Parquet) in MinIO, queried via DuckDB |
 | **Advanced** | [PinotGraph](config/pinot/README.md) | Apache Pinot OLAP cluster — real-time analytics store with multi-stage SQL engine |
@@ -122,6 +123,7 @@ docker compose down -v
 - [SQL Server](config/sqlserver/README.md)
 - [Sakila](config/sakila/README.md)
 - [ClickHouse](config/clickhouse/README.md)
+- [Microsoft Fabric](config/fabric/README.md)
 - [LakeGraph](config/lakegraph/README.md)
 - [IceGraph](config/icegraph/README.md)
 - [PinotGraph](config/pinot/README.md)

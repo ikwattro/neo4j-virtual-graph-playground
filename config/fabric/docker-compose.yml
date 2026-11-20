@@ -1,0 +1,6 @@
+services:
+  neo4j:
+    volumes:
+      # same driver as the sqlserver backend
+      - "./config/sqlserver/jdbc/mssql-jdbc-12.8.1.jre11.jar:/var/lib/neo4j/lib/mssql-jdbc-12.8.1.jre11.jar"
+      - "./config/fabric/nvg-config:/nvg_home"
